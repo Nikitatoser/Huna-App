@@ -92,9 +92,5 @@ fun Navigation() {
         composable("home") { HomeScreen(navController) }
         composable("login") { LoginScreen(navController) }
         composable("register") { RegisterScreen(navController) }
-        composable("product_details_screen/{productId}") { backStackEntry ->
-            val productId = backStackEntry.arguments?.getString("productId")
-            ProductDetailScreen(productId = productId)
-        }
     }
 }

@@ -40,7 +40,6 @@ fun ProductDetailScreen(productId: String?) {
     val db = FirebaseFirestore.getInstance()
     val product = remember { mutableStateOf<Product?>(null) }
 
-    // Завантаження даних товару
     LaunchedEffect(productId) {
         productId?.let {
             db.collection("products").document(it)

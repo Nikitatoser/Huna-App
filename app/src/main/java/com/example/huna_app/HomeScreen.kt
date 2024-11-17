@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,6 +48,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -76,7 +78,7 @@ fun HomeScreen(navController: NavController) {
                     else -> "profile"
                 }
                 navController.navigate(route) {
-                    popUpTo("main") { inclusive = false }  // Переконайтеся, що route збігається з маршрутом у NavHost
+                    popUpTo("main") { inclusive = false }
                 }
             }
         }
@@ -86,11 +88,17 @@ fun HomeScreen(navController: NavController) {
             startDestination = "main",
             Modifier.padding(innerPadding)
         ) {
-            composable("main") { MainScreen() }
+            composable("main") { MainScreen(db = FirebaseFirestore.getInstance(), navController = navController) }
             composable("notifications") { NotificationsScreen() }
             composable("add") { AddScreen() }
             composable("favorites") { FavoritesScreen() }
-            composable("profile") { ProfileScreen() }
+            composable("profile") { ProfileScreen(navController) }
+
+            // Динамічний маршрут для деталей товару
+            composable("product_details/{productId}") { backStackEntry ->
+                val productId = backStackEntry.arguments?.getString("productId")
+                ProductDetailScreen(productId)
+            }
         }
     }
 }
@@ -308,9 +316,57 @@ fun saveProductToFirestore(
 
 
 @Composable
-fun MainScreen() {
-    Text(text = "Ви на головній сторінці")
+fun MainScreen(db: FirebaseFirestore, navController: NavHostController) {
+    // Список всіх товарів
+    val allProductsList = remember { mutableStateListOf<Product>() }
+
+    // Запит до Firestore для отримання всіх товарів
+    LaunchedEffect(Unit) {
+        db.collection("products")
+            .get()
+            .addOnSuccessListener { result ->
+                allProductsList.clear()
+                for (document in result) {
+                    val product = document.toObject(Product::class.java)
+                    allProductsList.add(product)
+                }
+            }
+            .addOnFailureListener { exception ->
+                Log.e("Firestore", "Error fetching all products", exception)
+            }
+    }
+
+    // Інтерфейс головної сторінки
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Усі товари",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        if (allProductsList.isNotEmpty()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(allProductsList) { product ->
+                    ProductItem(
+                        product = product,
+                        navController = navController // Передаємо навігатор
+                    )
+                }
+            }
+        } else {
+            // Виводимо повідомлення, якщо немає товарів
+            Text("Немає доступних товарів", fontSize = 16.sp, color = Color.Gray)
+        }
+    }
 }
+
 
 
 
@@ -334,22 +390,46 @@ fun FavoritesScreen() {
 
 
 @Composable
-fun ProfileScreen() {
+fun ProfileScreen(navController: NavHostController) {
     val user = FirebaseAuth.getInstance().currentUser
     val db = FirebaseFirestore.getInstance()
 
-    if (user != null) {
-        UserProfile(user, db)
+    val products = remember { mutableStateListOf<Product>() }
+
+    // Завантаження товарів
+    LaunchedEffect(user) {
+        user?.let {
+            db.collection("products")
+                .whereEqualTo("ownerId", it.uid)
+                .get()
+                .addOnSuccessListener { result ->
+                    products.clear()
+                    for (document in result) {
+                        val product = document.toObject(Product::class.java)
+                        products.add(product)
+                    }
+                }
+        }
+    }
+
+    if (products.isNotEmpty()) {
+        LazyColumn {
+            items(products) { product ->
+                ProductItem(product = product, navController = navController)
+            }
+        }
     } else {
-        Text("Користувач не авторизований", color = Color.Red, fontSize = 18.sp)
+        Text("У вас немає товарів", fontSize = 16.sp, color = Color.Gray)
     }
 }
 
+
 @Composable
-fun UserProfile(user: FirebaseUser, db: FirebaseFirestore) {
+fun UserProfile(user: FirebaseUser, db: FirebaseFirestore, navController: NavHostController) {
+    // Список товарів
     val productsList = remember { mutableStateListOf<Product>() }
 
-    // Отримуємо товари для поточного користувача
+    // Запит на отримання товарів для поточного користувача
     LaunchedEffect(user) {
         db.collection("products")
             .whereEqualTo("ownerId", user.uid)
@@ -366,6 +446,7 @@ fun UserProfile(user: FirebaseUser, db: FirebaseFirestore) {
             }
     }
 
+    // Відображення інтерфейсу користувача
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -376,41 +457,55 @@ fun UserProfile(user: FirebaseUser, db: FirebaseFirestore) {
         Text(text = user.displayName ?: "Ім'я не вказане", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Text(text = "Email: ${user.email ?: "Не вказано"}", fontSize = 16.sp, color = Color.Gray)
 
-        // Виведення товарів
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = "Ваші товари:", fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
-        // Якщо товари є, відображаємо їх у списку
+        // Список товарів
         if (productsList.isNotEmpty()) {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 items(productsList) { product ->
-                    ProductItem(product)
+                    ProductItem(
+                        product = product,
+                        navController = navController // Передаємо навігатор для переходу
+                    )
                 }
             }
         } else {
-            // Якщо немає товарів, виводимо повідомлення
+            // Повідомлення, якщо немає товарів
             Text("У вас немає товарів", fontSize = 16.sp, color = Color.Gray)
         }
     }
 }
 
+
 @Composable
-fun ProductItem(product: Product) {
-    Column(
+fun ProductItem(product: Product, navController: NavHostController) {
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
-            .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
-            .padding(16.dp)
+            .clickable {
+                navController.navigate("product_details/${product.id}") // Переходимо на сторінку деталей товару
+            },
+
     ) {
-        Text(text = product.name, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Text(text = "Ціна: ${product.price} грн", fontSize = 16.sp, color = Color.Gray)
-        Text(text = "Категорія: ${product.category}", fontSize = 14.sp, color = Color.Gray)
-        Text(text = "Адреса: ${product.address}", fontSize = 14.sp, color = Color.Gray)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Column {
+                Text(text = product.name, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(text = "Ціна: ${product.price} грн", fontSize = 16.sp)
+                Text(text = "Продавець: ${product.ownerId}", fontSize = 14.sp, color = Color.Gray)
+            }
+        }
     }
 }
+
+
 
 
 fun getProductsForUser(db: FirebaseFirestore, user: FirebaseUser, callback: (List<Product>) -> Unit) {
