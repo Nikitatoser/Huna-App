@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "608728810033",
+    "project_id": "huna-app",
+    "storage_bucket": "huna-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:608728810033:android:e06e5f68e2decf5ceb0b10",
+        "android_client_info": {
+          "package_name": "com.example.huna_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNXTmkk3kvHYG4PcH9_9z_L6pPIVGSqCs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
