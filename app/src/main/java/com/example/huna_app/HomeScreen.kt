@@ -29,6 +29,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -36,6 +37,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.*
@@ -52,6 +54,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.huna_app.main_nav.AddScreen
+import com.example.huna_app.main_nav.MainScreen
+import com.example.huna_app.main_nav.ProfileScreen
+import com.example.huna_app.main_nav.UsersItems
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
@@ -93,7 +99,7 @@ fun HomeScreen(navController: NavController) {
             composable("add") { AddScreen() }
             composable("favorites") { FavoritesScreen() }
             composable("profile") { ProfileScreen(navController) }
-
+            composable("user_items") { UsersItems(navController) }
             // Динамічний маршрут для деталей товару
             composable("product_details/{productId}") { backStackEntry ->
                 val productId = backStackEntry.arguments?.getString("productId")
@@ -102,279 +108,6 @@ fun HomeScreen(navController: NavController) {
         }
     }
 }
-
-@Composable
-fun AddScreen() {
-    val db = FirebaseFirestore.getInstance()
-    val currentUser = FirebaseAuth.getInstance().currentUser
-    var photoUri by remember { mutableStateOf<Uri?>(null) }
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var address by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("Продаю") }
-    var price by remember { mutableStateOf("") }
-    var deliveryType by remember { mutableStateOf("Самовивіз") }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Поле для завантаження фото
-        Text(text = "Завантажити фото:")
-        UploadPhotoButton(photoUri) { newUri -> photoUri = newUri }
-
-        // Поле для назви товару
-        OutlinedTextField(
-            value = title,
-            onValueChange = { title = it },
-            label = { Text("Назва") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // Поле для опису товару
-        OutlinedTextField(
-            value = description,
-            onValueChange = { description = it },
-            label = { Text("Опис") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // Вибір категорії: "Шукаю" або "Продаю"
-        Text(text = "Категорія:")
-        Row {
-            RadioButton(
-                selected = category == "Продаю",
-                onClick = { category = "Продаю" }
-            )
-            Text(text = "Продаю", modifier = Modifier.padding(start = 8.dp))
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            RadioButton(
-                selected = category == "Шукаю",
-                onClick = { category = "Шукаю" }
-            )
-            Text(text = "Шукаю", modifier = Modifier.padding(start = 8.dp))
-        }
-
-        // Поле для ціни
-        OutlinedTextField(
-            value = price,
-            onValueChange = { price = it },
-            label = { Text("Ціна") },
-            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
-        // Поле для опису товару
-        OutlinedTextField(
-            value = address,
-            onValueChange = { address = it },
-            label = { Text("Address") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        // Вибір типу доставки
-        Text(text = "Тип доставки:")
-        DropdownMenuField(
-            selectedOption = deliveryType,
-            options = listOf("Самовивіз", "Доставка"),
-            onOptionSelected = { deliveryType = it }
-        )
-
-        // Кнопка для підтвердження
-        Button(
-            onClick = {
-                if (currentUser != null) {
-                    saveProductToFirestore(
-                        title = title,
-                        description = description,
-                        price = price,
-                        category = category,
-                        address = address,
-                        deliveryType = deliveryType,
-                        photoUri = photoUri,
-                        db = db,
-                        currentUser = currentUser
-                    )
-                } else {
-                    Log.e("AddScreen", "User is not logged in")
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Додати товар")
-        }
-    }
-}
-
-
-@Composable
-fun UploadPhotoButton(photoUri: Uri?, onPhotoSelected: (Uri?) -> Unit) {
-    Button(onClick = {
-        // Логіка для вибору фото
-    }) {
-        Text(if (photoUri != null) "Фото завантажено" else "Вибрати фото")
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DropdownMenuField(selectedOption: String, options: List<String>, onOptionSelected: (String) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded }
-    ) {
-        OutlinedTextField(
-            value = selectedOption,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text("Тип доставки") },
-            modifier = Modifier
-                .menuAnchor()
-                .fillMaxWidth()
-                .clickable { expanded = true }
-        )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            options.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(text = option) },
-                    onClick = {
-                        onOptionSelected(option)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-}
-
-
-fun saveProductToFirestore(
-    title: String,
-    description: String,
-    price: String,
-    category: String,
-    address: String,
-    deliveryType: String,
-    photoUri: Uri?,
-    db: FirebaseFirestore,
-    currentUser: FirebaseUser,
-) {
-    try {
-        // Валідація даних
-        if (title.isBlank() || description.isBlank() || price.toDoubleOrNull() == null) {
-            Log.e("SaveProduct", "Invalid product data")
-            return
-        }
-
-        val imageUrl = photoUri?.toString() ?: ""
-        val product = Product(
-            id = "", // ID буде згенеровано Firestore
-            name = title,
-            description = description,
-            price = price.toDouble(),
-            address = address,
-            deliveryType = deliveryType,
-            addDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
-            available = true, // За замовчуванням
-            category = category,
-            imageUrl = imageUrl,
-            ownerId = currentUser.uid
-        )
-
-        db.collection("products")
-            .add(product)
-            .addOnSuccessListener { documentReference ->
-                val productId = documentReference.id
-                documentReference.update("id", productId)
-                    .addOnSuccessListener {
-                        Log.d("Firestore", "Product ID updated successfully")
-                    }
-                    .addOnFailureListener { e ->
-                        Log.e("Firestore", "Error updating product ID", e)
-                    }
-            }
-            .addOnFailureListener { e ->
-                Log.e("Firestore", "Error adding product", e)
-            }
-    } catch (e: Exception) {
-        Log.e("SaveProduct", "Error saving product", e)
-    }
-}
-
-
-
-
-
-
-
-
-
-@Composable
-fun MainScreen(db: FirebaseFirestore, navController: NavHostController) {
-    // Список всіх товарів
-    val allProductsList = remember { mutableStateListOf<Product>() }
-
-    // Запит до Firestore для отримання всіх товарів
-    LaunchedEffect(Unit) {
-        db.collection("products")
-            .get()
-            .addOnSuccessListener { result ->
-                allProductsList.clear()
-                for (document in result) {
-                    val product = document.toObject(Product::class.java)
-                    allProductsList.add(product)
-                }
-            }
-            .addOnFailureListener { exception ->
-                Log.e("Firestore", "Error fetching all products", exception)
-            }
-    }
-
-    // Інтерфейс головної сторінки
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(
-            text = "Усі товари",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        if (allProductsList.isNotEmpty()) {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(allProductsList) { product ->
-                    ProductItem(
-                        product = product,
-                        navController = navController // Передаємо навігатор
-                    )
-                }
-            }
-        } else {
-            // Виводимо повідомлення, якщо немає товарів
-            Text("Немає доступних товарів", fontSize = 16.sp, color = Color.Gray)
-        }
-    }
-}
-
-
-
-
-
-
-
-
-
 
 
 @Composable
@@ -386,97 +119,6 @@ fun NotificationsScreen() {
 @Composable
 fun FavoritesScreen() {
     Text(text = "Це обране")
-}
-
-
-@Composable
-fun ProfileScreen(navController: NavHostController) {
-    val user = FirebaseAuth.getInstance().currentUser
-    val db = FirebaseFirestore.getInstance()
-
-    val products = remember { mutableStateListOf<Product>() }
-
-    // Завантаження товарів
-    LaunchedEffect(user) {
-        user?.let {
-            db.collection("products")
-                .whereEqualTo("ownerId", it.uid)
-                .get()
-                .addOnSuccessListener { result ->
-                    products.clear()
-                    for (document in result) {
-                        val product = document.toObject(Product::class.java)
-                        products.add(product)
-                    }
-                }
-        }
-    }
-
-    if (products.isNotEmpty()) {
-        LazyColumn {
-            items(products) { product ->
-                ProductItem(product = product, navController = navController)
-            }
-        }
-    } else {
-        Text("У вас немає товарів", fontSize = 16.sp, color = Color.Gray)
-    }
-}
-
-
-@Composable
-fun UserProfile(user: FirebaseUser, db: FirebaseFirestore, navController: NavHostController) {
-    // Список товарів
-    val productsList = remember { mutableStateListOf<Product>() }
-
-    // Запит на отримання товарів для поточного користувача
-    LaunchedEffect(user) {
-        db.collection("products")
-            .whereEqualTo("ownerId", user.uid)
-            .get()
-            .addOnSuccessListener { result ->
-                productsList.clear()  // Очищаємо список перед заповненням новими даними
-                for (document in result) {
-                    val product = document.toObject(Product::class.java)
-                    productsList.add(product)
-                }
-            }
-            .addOnFailureListener { exception ->
-                Log.e("Firestore", "Error fetching products for user", exception)
-            }
-    }
-
-    // Відображення інтерфейсу користувача
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Виведення даних користувача
-        Text(text = user.displayName ?: "Ім'я не вказане", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Text(text = "Email: ${user.email ?: "Не вказано"}", fontSize = 16.sp, color = Color.Gray)
-
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(text = "Ваші товари:", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-
-        // Список товарів
-        if (productsList.isNotEmpty()) {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(productsList) { product ->
-                    ProductItem(
-                        product = product,
-                        navController = navController // Передаємо навігатор для переходу
-                    )
-                }
-            }
-        } else {
-            // Повідомлення, якщо немає товарів
-            Text("У вас немає товарів", fontSize = 16.sp, color = Color.Gray)
-        }
-    }
 }
 
 
@@ -504,36 +146,6 @@ fun ProductItem(product: Product, navController: NavHostController) {
         }
     }
 }
-
-
-
-
-fun getProductsForUser(db: FirebaseFirestore, user: FirebaseUser, callback: (List<Product>) -> Unit) {
-    try {
-        db.collection("products")
-            .whereEqualTo("ownerId", user.uid)
-            .get()
-            .addOnSuccessListener { querySnapshot ->
-                val products = mutableListOf<Product>()
-                for (document in querySnapshot) {
-                    val product = document.toObject(Product::class.java)
-                    products.add(product)
-                }
-                callback(products)  // Передаємо правильний список об'єктів
-            }
-            .addOnFailureListener { e ->
-                Log.e("Firestore", "Error fetching products for user", e)
-            }
-    } catch (e: Exception) {
-        Log.e("Firestore", "Error fetching products", e)
-    }
-}
-
-
-
-
-
-
 
 
 

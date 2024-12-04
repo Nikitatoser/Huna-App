@@ -104,8 +104,6 @@ fun RegisterScreen (navController: NavController){
 }
 
 private fun signUp(auth: FirebaseAuth, email: String, password: String, navController: NavController){
-
-
     auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener{
         if(it.isSuccessful){
             navController.navigate("home")

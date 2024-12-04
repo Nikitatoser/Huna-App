@@ -23,6 +23,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.huna_app.main_nav.UsersItems
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 
@@ -69,10 +70,6 @@ fun SplashScreen(navController: NavHostController) {
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Логотип
-
-            Spacer(modifier = Modifier.height(16.dp))
-            // Текст під логотипом
             Text(
                 text = "HUNA", fontSize = 50.sp, color = Color(0xFFF88837),
                 fontWeight = FontWeight.Bold,
@@ -88,7 +85,8 @@ fun SplashScreen(navController: NavHostController) {
 fun Navigation() {
     val navController = rememberNavController()
 
-    NavHost(navController, startDestination = "login") {
+    NavHost(navController = navController, startDestination = "splash_screen") {
+        composable("splash_screen") { SplashScreen(navController) }
         composable("home") { HomeScreen(navController) }
         composable("login") { LoginScreen(navController) }
         composable("register") { RegisterScreen(navController) }
