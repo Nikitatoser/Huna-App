@@ -1,5 +1,6 @@
 package com.example.huna_app
 
+import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,8 +30,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.ktx.Firebase
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private lateinit var auth: FirebaseAuth
 @Composable
@@ -69,7 +75,7 @@ fun RegisterScreen (navController: NavController){
         })
         Spacer(modifier = Modifier.height(10.dp))
         Button(
-            onClick = { signUp(auth, emailState.value, passState.value, navController) },
+            onClick = { signUp(auth, emailState.value, passState.value, nameState.value, navController) },
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFF6200EE), // Колір фону кнопки
                 contentColor = Color.White         // Колір тексту
@@ -103,13 +109,55 @@ fun RegisterScreen (navController: NavController){
 
 }
 
-private fun signUp(auth: FirebaseAuth, email: String, password: String, navController: NavController){
+private fun signUp(auth: FirebaseAuth, email: String, password: String, name: String, navController: NavController){
     auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener{
         if(it.isSuccessful){
-            navController.navigate("home")
-            Log.d("MyLog", "SignUp: success")
+            val user = FirebaseAuth.getInstance().currentUser
+            if (user != null) {
+                saveUserToFirestore(name, FirebaseFirestore.getInstance(), user)
+                navController.navigate("home")
+                Log.d("MyLog", "SignUp: success")
+            }
         }else{
             Log.d("MyLog", "SignUp: fail")
         }
     }
 }
+
+
+fun saveUserToFirestore(
+    name: String,
+    db: FirebaseFirestore,
+    user: FirebaseUser // Передаємо поточного користувача для отримання його UID
+) {
+    try {
+        // Валідація імені
+        if (name.isBlank()) {
+            Log.e("SaveUser", "Name cannot be empty")
+            return
+        }
+
+        // Створення об'єкта User з UID як ID
+        val userData = User(
+            id = user.uid,  // Використовуємо UID з FirebaseAuth
+            name = name,
+            age = null.toString(),
+            address = null.toString()
+        )
+
+        // Додавання користувача у Firestore з UID як ID документа
+        db.collection("users")
+            .document(user.uid)  // Використовуємо UID як ID для документа
+            .set(userData)
+            .addOnSuccessListener {
+                Log.d("Firestore", "User added successfully with UID: ${user.uid}")
+            }
+            .addOnFailureListener { e ->
+                Log.e("Firestore", "Error adding user", e)
+            }
+    } catch (e: Exception) {
+        Log.e("SaveUser", "Error saving user", e)
+    }
+}
+
+

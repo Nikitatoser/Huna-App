@@ -54,7 +54,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.huna_app.main_nav.AccountSettingsScreen
 import com.example.huna_app.main_nav.AddScreen
+import com.example.huna_app.main_nav.AllSettingsScreen
 import com.example.huna_app.main_nav.MainScreen
 import com.example.huna_app.main_nav.ProfileScreen
 import com.example.huna_app.main_nav.UsersItems
@@ -100,10 +102,13 @@ fun HomeScreen(navController: NavController) {
             composable("favorites") { FavoritesScreen() }
             composable("profile") { ProfileScreen(navController) }
             composable("user_items") { UsersItems(navController) }
+
+            composable("account_settings") { AccountSettingsScreen(navController) }
+            composable("all_settings") { AllSettingsScreen(navController) }
             // Динамічний маршрут для деталей товару
             composable("product_details/{productId}") { backStackEntry ->
                 val productId = backStackEntry.arguments?.getString("productId")
-                ProductDetailScreen(productId)
+                ProductDetailScreen(productId, navController)
             }
         }
     }
@@ -157,31 +162,26 @@ fun BottomNavigationBar(selectedItem: Int, onItemSelected: (Int) -> Unit) {
     NavigationBar(containerColor = Color.White) {
         NavigationBarItem(
             icon = { Icon(Icons.Filled.Home, contentDescription = "Головна") },
-            label = { Text("Головна") },
             selected = selectedItem == 0,
             onClick = { onItemSelected(0) }
         )
         NavigationBarItem(
             icon = { Icon(Icons.Filled.Notifications, contentDescription = "Сповіщення") },
-            label = { Text("Сповіщення") },
             selected = selectedItem == 1,
             onClick = { onItemSelected(1) }
         )
         NavigationBarItem(
             icon = { Icon(Icons.Filled.Add, contentDescription = "Додати") },
-            label = { Text("Додати") },
             selected = selectedItem == 2,
             onClick = { onItemSelected(2) }
         )
         NavigationBarItem(
             icon = { Icon(Icons.Filled.Favorite, contentDescription = "Обране") },
-            label = { Text("Обране") },
             selected = selectedItem == 3,
             onClick = { onItemSelected(3) }
         )
         NavigationBarItem(
             icon = { Icon(Icons.Filled.Person, contentDescription = "Профіль") },
-            label = { Text("Профіль") },
             selected = selectedItem == 4,
             onClick = { onItemSelected(4) }
         )

@@ -10,30 +10,44 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import com.example.huna_app.Product
 import com.example.huna_app.ProductItem
+import com.example.huna_app.User
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
+
+
+
 
 @Composable
 fun ProfileScreen(navController: NavHostController) {
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
+
+
+
+
 
     // Додамо Column для розташування елементів
     Column(
@@ -43,13 +57,9 @@ fun ProfileScreen(navController: NavHostController) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        UserProfile(user = currentUser!!, db = FirebaseFirestore.getInstance(), navController = navController)
         // Виведення інформації про користувача
         currentUser?.let { user ->
-            Text(
-                text = "Ім'я користувача: ${user.displayName ?: "Немає"}",
-
-            )
-            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Електронна пошта: ${user.email ?: "Немає"}",
 
@@ -62,26 +72,35 @@ fun ProfileScreen(navController: NavHostController) {
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
 
+
+        Spacer(modifier = Modifier.height(16.dp))
         // Кнопка для виходу з акаунта
         Button(
             onClick = {
-                auth.signOut()
-                navController.navigate("login_screen") { // Перехід на екран логіну
-                    popUpTo("profile") { inclusive = true }
-                }
+                navController.navigate("account_settings")
             }
         ) {
-            Text(text = "Вийти з акаунта")
+            Text(text = "Account")
         }
+
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = {
                 navController.navigate("user_items")
             }
         ) {
-            Text(text = "ВАШІ ТОВАРИ")
+            Text(text = "Your items")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        // Кнопка для виходу з акаунта
+        Button(
+            onClick = {
+                navController.navigate("all_settings")
+            }
+        ) {
+            Text(text = "Settings")
         }
     }
 }
@@ -125,26 +144,172 @@ fun UsersItems(navController: NavHostController){
 
 
 
+@Composable
+fun AccountSettingsScreen(navController: NavHostController){
+    val auth = FirebaseAuth.getInstance()
+
+
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center) {
+        Text(text = "Account Settings")
+        Button(
+            onClick = {
+                auth.signOut()
+                navController.navigate("home") { // Перехід на екран логіну
+                    popUpTo("profile") { inclusive = true }
+                }
+            }
+        ) {
+            Text(text = "Log out")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        var showDialog by remember { mutableStateOf(false) }
+        val userId = auth.currentUser?.uid
+
+        Button(onClick = { showDialog = true }) {
+            Text(text = "Delete account")
+        }
+
+        if (showDialog) {
+            AlertDialog(
+                onDismissRequest = { showDialog = false },
+                title = { Text("Are you sure you want to delete your account?") },
+                text = { Text("This action cannot be undone.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        // Викликаємо функцію видалення акаунта та його даних
+                        if (userId != null) {
+                            deleteAccount(auth, userId, navController)
+                        }
+                        showDialog = false
+                    }) {
+                        Text("Yes, Delete")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+    }
+
+}
+
+fun deleteAccount(auth: FirebaseAuth, userId: String, navController: NavController) {
+    // Видалити всі товари користувача
+    deleteUserProducts(userId) { isProductDeleted ->
+        if (isProductDeleted) {
+            // Товари успішно видалені, тепер видаляємо дані користувача з Firestore
+            deleteUserDataFromFirestore(userId) { isUserDataDeleted ->
+                if (isUserDataDeleted) {
+                    // Якщо дані користувача також видалені, видаляємо акаунт
+                    auth.currentUser?.delete()
+                        ?.addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                auth.signOut()
+                                navController.navigate("home") {
+                                    popUpTo("profile") { inclusive = true }
+                                }
+                            } else {
+                                Log.e("DeleteAccount", "Failed to delete account: ${task.exception}")
+                            }
+                        }
+                } else {
+                    Log.e("DeleteAccount", "Failed to delete user data from Firestore")
+                }
+            }
+        } else {
+            Log.e("DeleteAccount", "Failed to delete user products")
+        }
+    }
+}
+
+fun deleteUserProducts(userId: String, onComplete: (Boolean) -> Unit) {
+    val productsCollection = FirebaseFirestore.getInstance().collection("products")
+
+    productsCollection.whereEqualTo("ownerId", userId)
+        .get()
+        .addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val products = task.result
+                if (products != null && !products.isEmpty) {
+                    for (product in products) {
+                        product.reference.delete()
+                            .addOnSuccessListener {
+                                if (product == products.last()) {
+                                    onComplete(true)
+                                }
+                            }
+                            .addOnFailureListener {
+                                Log.e("DeleteAccount", "Failed to delete product: ${product.id}")
+                                onComplete(false)
+                            }
+                    }
+                } else {
+                    onComplete(true)
+                }
+            } else {
+                Log.e("DeleteAccount", "Failed to fetch products: ${task.exception}")
+                onComplete(false)
+            }
+        }
+}
+
+fun deleteUserDataFromFirestore(userId: String, onComplete: (Boolean) -> Unit) {
+    val usersCollection = FirebaseFirestore.getInstance().collection("users")
+
+    usersCollection.document(userId).delete()
+        .addOnSuccessListener {
+            onComplete(true)
+        }
+        .addOnFailureListener { exception ->
+            Log.e("DeleteAccount", "Error deleting user data: ${exception.localizedMessage}")
+            onComplete(false)
+        }
+}
+
+
+
+
+
+@Composable
+fun AllSettingsScreen(navController: NavHostController){
+    Text(text = "All Settings")
+}
+
+
+
+
+
 
 @Composable
 fun UserProfile(user: FirebaseUser, db: FirebaseFirestore, navController: NavHostController) {
-    // Список товарів
-    val productsList = remember { mutableStateListOf<Product>() }
+    // Створення стану для даних користувача
+    val userData = remember { mutableStateOf<User?>(null) }
 
-    // Запит на отримання товарів для поточного користувача
+    // Запит на отримання даних користувача
     LaunchedEffect(user) {
-        db.collection("products")
-            .whereEqualTo("ownerId", user.uid)
+        // Отримуємо дані користувача з колекції "users" за ID користувача (user.uid)
+        db.collection("users")
+            .document(user.uid)
             .get()
-            .addOnSuccessListener { result ->
-                productsList.clear()  // Очищаємо список перед заповненням новими даними
-                for (document in result) {
-                    val product = document.toObject(Product::class.java)
-                    productsList.add(product)
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val fetchedUser = document.toObject(User::class.java)
+                    userData.value = fetchedUser
+                } else {
+                    Log.e("Firestore", "User document not found")
                 }
             }
             .addOnFailureListener { exception ->
-                Log.e("Firestore", "Error fetching products for user", exception)
+                Log.e("Firestore", "Error fetching user data", exception)
             }
     }
 
@@ -155,56 +320,15 @@ fun UserProfile(user: FirebaseUser, db: FirebaseFirestore, navController: NavHos
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Виведення даних користувача
-        Text(text = user.displayName ?: "Ім'я не вказане", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Text(text = "Email: ${user.email ?: "Не вказано"}", fontSize = 16.sp, color = Color.Gray)
-
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(text = "Ваші товари:", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-
-        // Список товарів
-        if (productsList.isNotEmpty()) {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(productsList) { product ->
-                    ProductItem(
-                        product = product,
-                        navController = navController // Передаємо навігатор для переходу
-                    )
-                }
-            }
-        } else {
-            // Повідомлення, якщо немає товарів
-            Text("У вас немає товарів", fontSize = 16.sp, color = Color.Gray)
+        // Виведення даних користувача, якщо вони доступні
+        userData.value?.let { fetchedUser ->
+            Text(text = "Ім'я: ${fetchedUser.name ?: "Невідомо"}", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(text = "Вік: ${fetchedUser.age ?: "Невідомо"}", fontSize = 18.sp)
+            Text(text = "Адреса: ${fetchedUser.address ?: "Невідомо"}", fontSize = 18.sp)
+        } ?: run {
+            // Якщо дані користувача не знайдено або вони не завантажені
+            Text(text = "Не вдалося завантажити дані користувача", fontSize = 16.sp, color = Color.Red)
         }
     }
 }
 
-
-private fun signOut(auth: FirebaseAuth){
-    auth.signOut()
-}
-
-
-
-fun getProductsForUser(db: FirebaseFirestore, user: FirebaseUser, callback: (List<Product>) -> Unit) {
-    try {
-        db.collection("products")
-            .whereEqualTo("ownerId", user.uid)
-            .get()
-            .addOnSuccessListener { querySnapshot ->
-                val products = mutableListOf<Product>()
-                for (document in querySnapshot) {
-                    val product = document.toObject(Product::class.java)
-                    products.add(product)
-                }
-                callback(products)  // Передаємо правильний список об'єктів
-            }
-            .addOnFailureListener { e ->
-                Log.e("Firestore", "Error fetching products for user", e)
-            }
-    } catch (e: Exception) {
-        Log.e("Firestore", "Error fetching products", e)
-    }
-}
