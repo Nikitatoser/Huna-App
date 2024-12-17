@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -44,11 +46,15 @@ fun RegisterScreen (navController: NavController){
 
     val auth = Firebase.auth
 
+    val dateOfBirthState = remember { mutableStateOf("") }
 
     var emailState = remember {
         mutableStateOf("")
     }
     var passState = remember {
+        mutableStateOf("")
+    }
+    var passState1 = remember {
         mutableStateOf("")
     }
     var nameState = remember {
@@ -63,6 +69,34 @@ fun RegisterScreen (navController: NavController){
         }, label = {
             Text(text = "Full name")
         })
+
+        OutlinedTextField(
+            value = dateOfBirthState.value,
+            onValueChange = { input ->
+                // Видаляємо всі зайві символи, залишаючи лише цифри
+                val digitsOnly = input.filter { it.isDigit() }
+
+                // Форматуємо рядок у вигляді "дд/мм/рррр"
+                val formattedDate = buildString {
+                    for (i in digitsOnly.indices) {
+                        append(digitsOnly[i])
+                        if ((i == 1 || i == 3) && i != digitsOnly.length - 1) {
+                            append("/") // Додаємо розділювач після дати та місяця
+                        }
+                    }
+                }
+
+                // Обмежуємо введення довжиною 10 символів (дд/мм/рррр)
+                if (formattedDate.length <= 10) {
+                    dateOfBirthState.value = formattedDate
+                }
+            },
+            label = { Text(text = "Date of Birth (dd/mm/yyyy)") },
+            placeholder = { Text(text = "dd/mm/yyyy") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), // Числова клавіатура
+            singleLine = true
+        )
+
         OutlinedTextField(value = emailState.value, onValueChange = {
             emailState.value = it
         }, label = {
@@ -73,9 +107,14 @@ fun RegisterScreen (navController: NavController){
         }, label = {
             Text(text = "Password")
         })
+        OutlinedTextField(value = passState1.value, onValueChange = {
+            passState1.value = it
+        }, label = {
+            Text(text = "Repeat Password")
+        })
         Spacer(modifier = Modifier.height(10.dp))
         Button(
-            onClick = { signUp(auth, emailState.value, passState.value, nameState.value, navController) },
+            onClick = { signUp(auth, emailState.value, passState.value, passState1.value, nameState.value, dateOfBirthState.value, navController) },
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFF6200EE), // Колір фону кнопки
                 contentColor = Color.White         // Колір тексту
@@ -109,14 +148,20 @@ fun RegisterScreen (navController: NavController){
 
 }
 
-private fun signUp(auth: FirebaseAuth, email: String, password: String, name: String, navController: NavController){
+private fun signUp(auth: FirebaseAuth, email: String, password: String, password1: String, name: String, dateOfBirth: String, navController: NavController){
     auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener{
         if(it.isSuccessful){
             val user = FirebaseAuth.getInstance().currentUser
-            if (user != null) {
-                saveUserToFirestore(name, FirebaseFirestore.getInstance(), user)
-                navController.navigate("home")
-                Log.d("MyLog", "SignUp: success")
+            if (user != null && name.isNotBlank() && dateOfBirth.isNotBlank()) {
+                if (password == password1) {
+                    saveUserToFirestore(name, dateOfBirth, FirebaseFirestore.getInstance(), user)
+                    navController.navigate("home")
+                    Log.d("MyLog", "SignUp: success")
+                }
+                else{
+
+                    Log.d("MyLog", "SignUp: fail")
+                }
             }
         }else{
             Log.d("MyLog", "SignUp: fail")
@@ -127,6 +172,7 @@ private fun signUp(auth: FirebaseAuth, email: String, password: String, name: St
 
 fun saveUserToFirestore(
     name: String,
+    date: String,
     db: FirebaseFirestore,
     user: FirebaseUser // Передаємо поточного користувача для отримання його UID
 ) {
@@ -136,12 +182,16 @@ fun saveUserToFirestore(
             Log.e("SaveUser", "Name cannot be empty")
             return
         }
+        if (date.isBlank()) {
+            Log.e("SaveUser", "Name cannot be empty")
+            return
+        }
 
         // Створення об'єкта User з UID як ID
         val userData = User(
             id = user.uid,  // Використовуємо UID з FirebaseAuth
             name = name,
-            age = null.toString(),
+            age = date,
             address = null.toString()
         )
 

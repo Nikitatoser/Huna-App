@@ -58,7 +58,7 @@ fun LoginScreen (navController: NavController){
         OutlinedTextField(value = passState.value, onValueChange = {
             passState.value = it
         }, label = {
-            Text(text = "Email")
+            Text(text = "Password")
         })
         Spacer(modifier = Modifier.height(10.dp))
         Button(

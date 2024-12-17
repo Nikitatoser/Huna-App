@@ -58,11 +58,13 @@ import com.example.huna_app.main_nav.AccountSettingsScreen
 import com.example.huna_app.main_nav.AddScreen
 import com.example.huna_app.main_nav.AllSettingsScreen
 import com.example.huna_app.main_nav.MainScreen
+import com.example.huna_app.main_nav.FavoritesScreen
 import com.example.huna_app.main_nav.ProfileScreen
 import com.example.huna_app.main_nav.UsersItems
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -99,7 +101,7 @@ fun HomeScreen(navController: NavController) {
             composable("main") { MainScreen(db = FirebaseFirestore.getInstance(), navController = navController) }
             composable("notifications") { NotificationsScreen() }
             composable("add") { AddScreen() }
-            composable("favorites") { FavoritesScreen() }
+            composable("favorites") { FavoritesScreen(navController) }
             composable("profile") { ProfileScreen(navController) }
             composable("user_items") { UsersItems(navController) }
 
@@ -122,21 +124,28 @@ fun NotificationsScreen() {
 
 
 @Composable
-fun FavoritesScreen() {
-    Text(text = "Це обране")
-}
-
-
-@Composable
 fun ProductItem(product: Product, navController: NavHostController) {
+    // Стан для збереження імені продавця
+    var sellerName by remember { mutableStateOf("Завантаження...") }
+
+    // Завантаження імені з Firestore
+    LaunchedEffect(product.ownerId) {
+        val db = FirebaseFirestore.getInstance()
+        try {
+            val document = db.collection("users").document(product.ownerId).get().await()
+            sellerName = document.getString("name") ?: "Невідомий продавець"
+        } catch (e: Exception) {
+            sellerName = "Помилка завантаження"
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
             .clickable {
                 navController.navigate("product_details/${product.id}") // Переходимо на сторінку деталей товару
-            },
-
+            }
     ) {
         Row(
             modifier = Modifier
@@ -145,12 +154,13 @@ fun ProductItem(product: Product, navController: NavHostController) {
         ) {
             Column {
                 Text(text = product.name, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Text(text = "Ціна: ${product.price} грн", fontSize = 16.sp)
-                Text(text = "Продавець: ${product.ownerId}", fontSize = 14.sp, color = Color.Gray)
+                Text(text = "${product.price} $", fontSize = 16.sp)
+                Text(text = sellerName, fontSize = 14.sp, color = Color.Gray)
             }
         }
     }
 }
+
 
 
 
