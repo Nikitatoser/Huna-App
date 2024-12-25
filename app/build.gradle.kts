@@ -52,8 +52,11 @@ android {
 }
 
 dependencies {
+    implementation(libs.firebase.database.ktx)
     val nav_version = "2.8.2"
-
+    
+    
+    
     implementation("androidx.navigation:navigation-compose:$nav_version")
 
     implementation("io.coil-kt:coil-compose:2.4.0")

@@ -1,20 +1,55 @@
 package com.example.huna_app.main_nav
 
 import android.util.Log
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBox
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Create
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.outlined.Create
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
@@ -22,22 +57,28 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
+import coil.compose.AsyncImage
 import com.example.huna_app.Product
-import com.example.huna_app.ProductItem
 import com.example.huna_app.User
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-
-
+import kotlinx.coroutines.tasks.await
 
 
 @Composable
@@ -45,73 +86,161 @@ fun ProfileScreen(navController: NavHostController) {
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
 
+    var userName by remember { mutableStateOf("Loading...") }
+    var userImage by remember { mutableStateOf("") }
 
+    LaunchedEffect(currentUser?.uid) {
+        val db = FirebaseFirestore.getInstance()
+        currentUser?.let { user ->
+            try {
+                val document = db.collection("users").document(user.uid).get().await()
+                userName = document.getString("name") ?: "Name not available"
+                userImage = document.getString("profileImageUrl") ?: ""
+            } catch (e: Exception) {
+                userName = "Error loading"
+                userImage = ""
+            }
+        }
+    }
 
-
-
-    // Додамо Column для розташування елементів
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .background(Color.White)
+            .padding(5.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Top
     ) {
-        UserProfile(user = currentUser!!, db = FirebaseFirestore.getInstance(), navController = navController)
-        // Виведення інформації про користувача
-        currentUser?.let { user ->
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF1960AB))
+                    .clickable { navController.navigateUp() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
+            }
+
             Text(
-                text = "Електронна пошта: ${user.email ?: "Немає"}",
-
-            )
-        } ?: run {
-            // Якщо користувач не авторизований
-            Text(
-                text = "Користувач не авторизований",
-
+                text = "Account",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1960AB)
             )
         }
-
-
-
         Spacer(modifier = Modifier.height(16.dp))
-        // Кнопка для виходу з акаунта
-        Button(
-            onClick = {
-                navController.navigate("account_settings")
-            }
+        Box(
+            modifier = Modifier
+                .size(150.dp)
+                .clip(RoundedCornerShape(25))
+                .background(Color.LightGray),
+
+            contentAlignment = Alignment.Center
+
         ) {
-            Text(text = "Account")
+            if (userImage.isNotEmpty()) {
+                AsyncImage(
+                    model = userImage,
+                    contentDescription = "Profile Image",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Default Profile Icon",
+                    modifier = Modifier.size(55.dp),
+                    tint = Color.White
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        Button(
-            onClick = {
-                navController.navigate("user_items")
-            }
-        ) {
-            Text(text = "Your items")
-        }
+
+        Text(
+            text = userName,
+            fontSize = 30.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF1C3D5A)
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        ProfileButton(
+            text = "Account",
+            onClick = { navController.navigate("account_settings") },
+            icon = Icons.Default.AccountCircle
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
-        // Кнопка для виходу з акаунта
-        Button(
-            onClick = {
-                navController.navigate("all_settings")
-            }
+
+        ProfileButton(
+            text = "Your items",
+            onClick = { navController.navigate("user_items") },
+            icon = Icons.Default.List
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ProfileButton(
+            text = "Settings",
+            onClick = { navController.navigate("all_settings") },
+            icon = Icons.Default.Settings
+        )
+    }
+}
+
+@Composable
+fun ProfileButton(text: String, onClick: () -> Unit, icon: ImageVector) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = ButtonDefaults.buttonColors(
+            Color(0xFF1960AB),
+            contentColor = Color.White
+        )
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
-            Text(text = "Settings")
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.Medium)
         }
     }
 }
 
 
+
+
 @Composable
-fun UsersItems(navController: NavHostController){
+fun UsersItems(navController: NavHostController) {
     val user = FirebaseAuth.getInstance().currentUser
     val db = FirebaseFirestore.getInstance()
 
     val products = remember { mutableStateListOf<Product>() }
+    var productToEdit by remember { mutableStateOf<Product?>(null) }
 
     // Завантаження товарів
     LaunchedEffect(user) {
@@ -122,85 +251,578 @@ fun UsersItems(navController: NavHostController){
                 .addOnSuccessListener { result ->
                     products.clear()
                     for (document in result) {
-                        val product = document.toObject(Product::class.java)
+                        val product = document.toObject(Product::class.java).apply {
+                            id = document.id
+                        }
                         products.add(product)
                     }
                 }
         }
     }
 
-    if (products.isNotEmpty()) {
-        LazyColumn {
-            items(products) { product ->
-                ProductItem(product = product, navController = navController)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .padding(5.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF1960AB))
+                    .clickable { navController.navigateUp() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
+            }
+
+            Text(
+                text = "Your items",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1960AB)
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (products.isNotEmpty()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(vertical = 8.dp)
+            ) {
+                items(products) { product ->
+                    ProductItem(
+                        product = product,
+                        navController = navController,
+                        onEdit = { productToEdit = it },
+                        onDelete = { productId ->
+                            db.collection("products").document(productId).delete()
+                                .addOnSuccessListener {
+                                    products.removeIf { it.id == productId }
+                                }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Top
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ShoppingCart,
+                    contentDescription = null,
+                    tint = Color.Gray,
+                    modifier = Modifier.size(64.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "У вас немає товарів",
+                    fontSize = 18.sp,
+                    color = Color.Gray,
+                    textAlign = TextAlign.Center
+                )
             }
         }
-    } else {
-        Text("У вас немає товарів", fontSize = 16.sp, color = Color.Gray)
+    }
+
+    if (productToEdit != null) {
+        EditProductDialog(
+            product = productToEdit!!,
+            onDismiss = { productToEdit = null },
+            onSave = { updatedProduct ->
+                db.collection("products").document(updatedProduct.id!!).set(updatedProduct)
+                    .addOnSuccessListener {
+                        val index = products.indexOfFirst { it.id == updatedProduct.id }
+                        if (index != -1) {
+                            products[index] = updatedProduct
+                        }
+                        productToEdit = null
+                    }
+            }
+        )
     }
 }
 
 
+@Composable
+fun ProductItem(
+    product: Product,
+    navController: NavHostController,
+    onEdit: (Product) -> Unit,
+    onDelete: (String) -> Unit
+) {
 
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable { navController.navigate("product_details/${product.id}") }, // Перехід на сторінку деталей товару
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Зображення товару
+            val imageModifier = Modifier
+                .size(100.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.Gray)
+
+            if (product.imageUrl.isNotEmpty()) {
+                AsyncImage(
+                    model = product.imageUrl,
+                    contentDescription = "Зображення товару",
+                    modifier = imageModifier,
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = imageModifier,
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "No Image",
+                        tint = Color.Gray
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Інформація про товар
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = product.name,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = product.address,
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+                // Ціна
+                Box(
+                    modifier = Modifier
+                        .background(Color(0xFF90B9F6), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "${product.price} $",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
+
+            Column(){
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background( Color(0xFF1960AB))
+                        .clickable {    onEdit(product)   },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Create,
+                        contentDescription = "Favorite",
+                        tint = Color.White
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background( Color(0xFF1960AB))
+                        .clickable {    onDelete(product.id ?: "")  },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = "Favorite",
+                        tint = Color.White
+                    )
+                }
+            }
+
+
+        }
+    }
+}
+
+@Composable
+fun EditProductDialog(
+    product: Product,
+    onDismiss: () -> Unit,
+    onSave: (Product) -> Unit
+) {
+    var name by remember { mutableStateOf(product.name ?: "") }
+    var description by remember { mutableStateOf(product.description ?: "") }
+    var price by remember { mutableStateOf(product.price?.toString() ?: "") }
+    var address by remember { mutableStateOf(product.address ?: "") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "Edit Product") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Description") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = address,
+                    onValueChange = { address = it },
+                    label = { Text("Address") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = price,
+                    onValueChange = { price = it.filter { char -> char.isDigit() || char == '.' } },
+                    label = { Text("Price") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val parsedPrice = price.toDoubleOrNull()
+                if (parsedPrice != null) {
+                    onSave(
+                        product.copy(
+                            name = name,
+                            description = description,
+                            address = address,
+                            price = parsedPrice
+                        )
+                    )
+                } else {
+                    // Можна додати логіку для відображення помилки, якщо ціна некоректна
+                }
+            }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
 
 
 @Composable
-fun AccountSettingsScreen(navController: NavHostController){
+fun AccountSettingsScreen(navController: NavHostController) {
+
     val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
 
+    var userName by remember { mutableStateOf("Loading...") }
+    var userImage by remember { mutableStateOf("") }
+    var address by remember { mutableStateOf("Not set") }
 
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center) {
-        Text(text = "Account Settings")
-        Button(
-            onClick = {
-                auth.signOut()
-                navController.navigate("home") { // Перехід на екран логіну
-                    popUpTo("profile") { inclusive = true }
-                }
+    var showChangeAddressDialog by remember { mutableStateOf(false) }
+    var showChangeNameDialog by remember { mutableStateOf(false) }
+    var showChangePasswordDialog by remember { mutableStateOf(false) }
+
+    val userId = auth.currentUser?.uid
+
+    LaunchedEffect(currentUser?.uid) {
+        val db = FirebaseFirestore.getInstance()
+        currentUser?.let { user ->
+            try {
+                val document = db.collection("users").document(user.uid).get().await()
+                userName = document.getString("name") ?: "Name not available"
+                userImage = document.getString("profileImageUrl") ?: ""
+                address = document.getString("address") ?: "Not set"
+            } catch (e: Exception) {
+                userName = "Error loading"
+                userImage = ""
+                address = "Not set"
             }
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .padding(5.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top
+    ) {
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = "Log out")
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF1960AB))
+                    .clickable { navController.navigateUp() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
+            }
+
+            Text(
+                text = "Account settings",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1960AB)
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        var showDialog by remember { mutableStateOf(false) }
-        val userId = auth.currentUser?.uid
-
-        Button(onClick = { showDialog = true }) {
-            Text(text = "Delete account")
+        Box(
+            modifier = Modifier
+                .size(150.dp)
+                .clip(RoundedCornerShape(25))
+                .background(Color.LightGray),
+            contentAlignment = Alignment.Center
+        ) {
+            if (userImage.isNotEmpty()) {
+                AsyncImage(
+                    model = userImage,
+                    contentDescription = "Profile Image",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Default Profile Icon",
+                    modifier = Modifier.size(55.dp),
+                    tint = Color.White
+                )
+            }
         }
 
-        if (showDialog) {
-            AlertDialog(
-                onDismissRequest = { showDialog = false },
-                title = { Text("Are you sure you want to delete your account?") },
-                text = { Text("This action cannot be undone.") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        // Викликаємо функцію видалення акаунта та його даних
-                        if (userId != null) {
-                            deleteAccount(auth, userId, navController)
-                        }
-                        showDialog = false
-                    }) {
-                        Text("Yes, Delete")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDialog = false }) {
-                        Text("Cancel")
-                    }
-                }
-            )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = userName,
+            fontSize = 30.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF1C3D5A)
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Text(
+            text = "Address: $address",
+            fontSize = 20.sp,
+            color = Color.Gray
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ProfileButton(
+            text = "Change Name",
+            onClick = { showChangeNameDialog = true },
+            icon = Icons.Default.AccountCircle
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ProfileButton(
+            text = "Change Address",
+            onClick = { showChangeAddressDialog = true },
+            icon = Icons.Default.Home
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ProfileButton(
+            text = "Change Password",
+            onClick = { showChangePasswordDialog = true },
+            icon = Icons.Default.Lock
+        )
+
+        if (showChangeAddressDialog) {
+            ChangeAddressDialog(onDismiss = { showChangeAddressDialog = false }, onAddressChange = { newAddress ->
+                address = newAddress
+                updateUserAddress(userId, newAddress)
+            })
+        }
+
+        if (showChangeNameDialog) {
+            ChangeNameDialog(onDismiss = { showChangeNameDialog = false }, onNameChange = { newName ->
+                userName = newName
+                updateUserName(userId, newName)
+            })
+        }
+
+        if (showChangePasswordDialog) {
+            ChangePasswordDialog(onDismiss = { showChangePasswordDialog = false })
         }
     }
-
 }
+
+@Composable
+fun ChangeAddressDialog(onDismiss: () -> Unit, onAddressChange: (String) -> Unit) {
+    var newAddress by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Change Address") },
+        text = {
+            Column {
+                Text("Enter your new address:")
+                TextField(value = newAddress, onValueChange = { newAddress = it })
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onAddressChange(newAddress)
+                onDismiss()
+            }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun ChangeNameDialog(onDismiss: () -> Unit, onNameChange: (String) -> Unit) {
+    var newName by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Change Name") },
+        text = {
+            Column {
+                Text("Enter your new name:")
+                TextField(value = newName, onValueChange = { newName = it })
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onNameChange(newName)
+                onDismiss()
+            }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun ChangePasswordDialog(onDismiss: () -> Unit) {
+    var newPassword by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Change Password") },
+        text = {
+            Column {
+                Text("Enter your new password:")
+                TextField(value = newPassword, onValueChange = { newPassword = it })
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                updatePassword(newPassword)
+                onDismiss()
+            }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+fun updateUserAddress(userId: String?, newAddress: String) {
+    val db = FirebaseFirestore.getInstance()
+    userId?.let {
+        db.collection("users").document(it).update("address", newAddress)
+    }
+}
+
+fun updateUserName(userId: String?, newName: String) {
+    val db = FirebaseFirestore.getInstance()
+    userId?.let {
+        db.collection("users").document(it).update("name", newName)
+    }
+}
+
+fun updatePassword(newPassword: String) {
+    val auth = FirebaseAuth.getInstance()
+    auth.currentUser?.updatePassword(newPassword)
+}
+
+
+
+
 
 fun deleteAccount(auth: FirebaseAuth, userId: String, navController: NavController) {
     // Видалити всі товари користувача
@@ -214,7 +836,7 @@ fun deleteAccount(auth: FirebaseAuth, userId: String, navController: NavControll
                         ?.addOnCompleteListener { task ->
                             if (task.isSuccessful) {
                                 auth.signOut()
-                                navController.navigate("home") {
+                                navController.navigate("login") {
                                     popUpTo("profile") { inclusive = true }
                                 }
                             } else {
@@ -281,54 +903,150 @@ fun deleteUserDataFromFirestore(userId: String, onComplete: (Boolean) -> Unit) {
 
 @Composable
 fun AllSettingsScreen(navController: NavHostController){
-    Text(text = "All Settings")
-}
 
+    val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
 
+    var userName by remember { mutableStateOf("Loading...") }
+    var userImage by remember { mutableStateOf("") }
 
+    var showDialog by remember { mutableStateOf(false) }
+    val userId = auth.currentUser?.uid
 
-
-
-@Composable
-fun UserProfile(user: FirebaseUser, db: FirebaseFirestore, navController: NavHostController) {
-    // Створення стану для даних користувача
-    val userData = remember { mutableStateOf<User?>(null) }
-
-    // Запит на отримання даних користувача
-    LaunchedEffect(user) {
-        // Отримуємо дані користувача з колекції "users" за ID користувача (user.uid)
-        db.collection("users")
-            .document(user.uid)
-            .get()
-            .addOnSuccessListener { document ->
-                if (document.exists()) {
-                    val fetchedUser = document.toObject(User::class.java)
-                    userData.value = fetchedUser
-                } else {
-                    Log.e("Firestore", "User document not found")
-                }
+    LaunchedEffect(currentUser?.uid) {
+        val db = FirebaseFirestore.getInstance()
+        currentUser?.let { user ->
+            try {
+                val document = db.collection("users").document(user.uid).get().await()
+                userName = document.getString("name") ?: "Name not available"
+                userImage = document.getString("profileImageUrl") ?: ""
+            } catch (e: Exception) {
+                userName = "Error loading"
+                userImage = ""
             }
-            .addOnFailureListener { exception ->
-                Log.e("Firestore", "Error fetching user data", exception)
-            }
-    }
-
-    // Відображення інтерфейсу користувача
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Виведення даних користувача, якщо вони доступні
-        userData.value?.let { fetchedUser ->
-            Text(text = "Ім'я: ${fetchedUser.name ?: "Невідомо"}", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Text(text = "Вік: ${fetchedUser.age ?: "Невідомо"}", fontSize = 18.sp)
-            Text(text = "Адреса: ${fetchedUser.address ?: "Невідомо"}", fontSize = 18.sp)
-        } ?: run {
-            // Якщо дані користувача не знайдено або вони не завантажені
-            Text(text = "Не вдалося завантажити дані користувача", fontSize = 16.sp, color = Color.Red)
         }
     }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .padding(5.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top
+    ) {
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF1960AB))
+                    .clickable { navController.navigateUp() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
+            }
+
+            Text(
+                text = "Account settings",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1960AB)
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .size(150.dp)
+                .clip(RoundedCornerShape(25))
+                .background(Color.LightGray),
+
+            contentAlignment = Alignment.Center
+
+        ) {
+            if (userImage.isNotEmpty()) {
+                AsyncImage(
+                    model = userImage,
+                    contentDescription = "Profile Image",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Default Profile Icon",
+                    modifier = Modifier.size(55.dp),
+                    tint = Color.White
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = userName,
+            fontSize = 30.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF1C3D5A)
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        ProfileButton(
+            text = "Logout",
+            onClick = {
+                auth.signOut()
+                navController.navigate("login") { // Перехід на екран логіну
+                    popUpTo("profile") { inclusive = true }
+                }},
+            icon = Icons.Default.ExitToApp
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ProfileButton(
+            text = "Delete account",
+            onClick = { showDialog = true },
+            icon = Icons.Default.Delete
+        )
+
+
+        if (showDialog) {
+            AlertDialog(
+                onDismissRequest = { showDialog = false },
+                title = { Text("Are you sure you want to delete your account?") },
+                text = { Text("This action cannot be undone.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        // Викликаємо функцію видалення акаунта та його даних
+                        if (userId != null) {
+                            deleteAccount(auth, userId, navController)
+                        }
+                        showDialog = false
+                    }) {
+                        Text("Yes, Delete")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+    }
 }
+
 

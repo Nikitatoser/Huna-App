@@ -39,47 +39,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable
-fun SplashScreen(navController: NavHostController) {
-    // Використовуємо LaunchedEffect для затримки і перевірки авторизації
-    LaunchedEffect(key1 = true) {
-        // Отримуємо поточного користувача з FirebaseAuth
-        val currentUser = FirebaseAuth.getInstance().currentUser
-
-        // Затримка на 3 секунди (можна прибрати або скоротити)
-        delay(3000)
-
-        // Перевіряємо чи є користувач авторизованим
-        if (currentUser != null) {
-            // Якщо користувач авторизований, переходимо на головний екран
-            navController.navigate("home") {
-                popUpTo("splash") { inclusive = true } // Видаляємо сплеш-екран з навігації
-            }
-        } else {
-            // Якщо користувач не авторизований, переходимо на екран входу
-            navController.navigate("login") {
-                popUpTo("splash") { inclusive = true } // Видаляємо сплеш-екран з навігації
-            }
-        }
-    }
-
-    // Відображення контенту сплеш-скріну
-    Box(
-        modifier = Modifier
-            .fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "HUNA", fontSize = 50.sp, color = Color(0xFFF88837),
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 16.dp)
-            )
-        }
-    }
-}
-
-
 
 @Composable
 fun Navigation() {

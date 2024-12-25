@@ -2,9 +2,11 @@ package com.example.huna_app
 
 import android.net.Uri
 import android.util.Log
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,6 +36,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -43,6 +47,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -53,6 +59,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.huna_app.main_nav.AccountSettingsScreen
 import com.example.huna_app.main_nav.AddScreen
@@ -72,23 +79,30 @@ import java.util.Locale
 @Composable
 fun HomeScreen(navController: NavController) {
     val navController = rememberNavController()  // Зберігаємо NavController тут
-
     var selectedItem by remember { mutableStateOf(0) }
-    val items = listOf("Головна", "Сповіщення", "Додати", "Обране", "Профіль")
+
+    // Маршрути, на яких показується BottomNavigationBar
+    val routesWithBottomBar = listOf("main", "notifications", "add", "favorites", "profile")
+
+    // Отримання поточного маршруту
+    val currentBackStackEntry = navController.currentBackStackEntryAsState()
+    val currentDestination = currentBackStackEntry.value?.destination?.route
 
     Scaffold(
         bottomBar = {
-            BottomNavigationBar(selectedItem) { selectedIndex ->
-                selectedItem = selectedIndex
-                val route = when (selectedIndex) {
-                    0 -> "main"
-                    1 -> "notifications"
-                    2 -> "add"
-                    3 -> "favorites"
-                    else -> "profile"
-                }
-                navController.navigate(route) {
-                    popUpTo("main") { inclusive = false }
+            if (currentDestination in routesWithBottomBar) {
+                BottomNavigationBar(selectedItem) { selectedIndex ->
+                    selectedItem = selectedIndex
+                    val route = when (selectedIndex) {
+                        0 -> "main"
+                        1 -> "notifications"
+                        2 -> "add"
+                        3 -> "favorites"
+                        else -> "profile"
+                    }
+                    navController.navigate(route) {
+                        popUpTo("main") { inclusive = false }
+                    }
                 }
             }
         }
@@ -99,12 +113,14 @@ fun HomeScreen(navController: NavController) {
             Modifier.padding(innerPadding)
         ) {
             composable("main") { MainScreen(db = FirebaseFirestore.getInstance(), navController = navController) }
-            composable("notifications") { NotificationsScreen() }
-            composable("add") { AddScreen() }
+            composable("notifications") { AllChatScreen(navController) }
+            composable("add") { AddScreen(navController) }
             composable("favorites") { FavoritesScreen(navController) }
             composable("profile") { ProfileScreen(navController) }
             composable("user_items") { UsersItems(navController) }
 
+            composable("login") { LoginScreen(navController) }
+            composable("register") { RegisterScreen(navController) }
             composable("account_settings") { AccountSettingsScreen(navController) }
             composable("all_settings") { AllSettingsScreen(navController) }
             // Динамічний маршрут для деталей товару
@@ -112,56 +128,25 @@ fun HomeScreen(navController: NavController) {
                 val productId = backStackEntry.arguments?.getString("productId")
                 ProductDetailScreen(productId, navController)
             }
-        }
-    }
-}
+            composable("chat/{chatId}/{productId}") { backStackEntry ->
+                val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
+                val productId = backStackEntry.arguments?.getString("productId") ?: ""
 
-
-@Composable
-fun NotificationsScreen() {
-    Text(text = "Це сторінка сповіщень")
-}
-
-
-@Composable
-fun ProductItem(product: Product, navController: NavHostController) {
-    // Стан для збереження імені продавця
-    var sellerName by remember { mutableStateOf("Завантаження...") }
-
-    // Завантаження імені з Firestore
-    LaunchedEffect(product.ownerId) {
-        val db = FirebaseFirestore.getInstance()
-        try {
-            val document = db.collection("users").document(product.ownerId).get().await()
-            sellerName = document.getString("name") ?: "Невідомий продавець"
-        } catch (e: Exception) {
-            sellerName = "Помилка завантаження"
-        }
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-            .clickable {
-                navController.navigate("product_details/${product.id}") // Переходимо на сторінку деталей товару
+                ChatScreen(
+                    chatId = chatId,
+                    productId = productId,
+                    userId = FirebaseAuth.getInstance().currentUser?.uid ?: "",
+                    onNavigateBack = { navController.popBackStack() },
+                    navController = navController
+                )
             }
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Column {
-                Text(text = product.name, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Text(text = "${product.price} $", fontSize = 16.sp)
-                Text(text = sellerName, fontSize = 14.sp, color = Color.Gray)
-            }
+
+
+
+
         }
     }
 }
-
-
 
 
 
@@ -169,34 +154,102 @@ fun ProductItem(product: Product, navController: NavHostController) {
 
 @Composable
 fun BottomNavigationBar(selectedItem: Int, onItemSelected: (Int) -> Unit) {
-    NavigationBar(containerColor = Color.White) {
-        NavigationBarItem(
-            icon = { Icon(Icons.Filled.Home, contentDescription = "Головна") },
-            selected = selectedItem == 0,
-            onClick = { onItemSelected(0) }
-        )
-        NavigationBarItem(
-            icon = { Icon(Icons.Filled.Notifications, contentDescription = "Сповіщення") },
-            selected = selectedItem == 1,
-            onClick = { onItemSelected(1) }
-        )
-        NavigationBarItem(
-            icon = { Icon(Icons.Filled.Add, contentDescription = "Додати") },
-            selected = selectedItem == 2,
-            onClick = { onItemSelected(2) }
-        )
-        NavigationBarItem(
-            icon = { Icon(Icons.Filled.Favorite, contentDescription = "Обране") },
-            selected = selectedItem == 3,
-            onClick = { onItemSelected(3) }
-        )
-        NavigationBarItem(
-            icon = { Icon(Icons.Filled.Person, contentDescription = "Профіль") },
-            selected = selectedItem == 4,
-            onClick = { onItemSelected(4) }
-        )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(topStart = 25.dp, topEnd = 25.dp))
+            .background(Color(0xFF1960AB)) // Фон для навбару
+
+    ) {
+        NavigationBar(
+            containerColor = Color.Transparent, // Робимо фон прозорим, бо він вже заданий у Box
+            tonalElevation = 0.dp
+        ) {
+            NavigationBarItem(
+                icon = {
+                    Icon(
+                        imageVector = Icons.Filled.Home,
+                        contentDescription = "Головна",
+                        modifier = Modifier.size(32.dp) // Змінюємо розмір іконки
+                    )
+                },
+                selected = selectedItem == 0,
+                onClick = { onItemSelected(0) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color(0xFFF5F5F5), // Білий, якщо вибрано
+                    unselectedIconColor = Color.White, // Сірий, якщо не вибрано
+                    indicatorColor = Color(0xFF1960AB) // Видаляємо круг навколо іконки
+                )
+            )
+            NavigationBarItem(
+                icon = {
+                    Icon(
+                        imageVector = Icons.Filled.Notifications,
+                        contentDescription = "Сповіщення",
+                        modifier = Modifier.size(32.dp) // Змінюємо розмір іконки
+                    )
+                },
+                selected = selectedItem == 1,
+                onClick = { onItemSelected(1) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color(0xFFF5F5F5),
+                    unselectedIconColor = Color.White,
+                    indicatorColor = Color(0xFF1960AB)
+                )
+            )
+            NavigationBarItem(
+                icon = {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = "Додати",
+                        modifier = Modifier.size(32.dp)
+                    )
+                },
+                selected = selectedItem == 2,
+                onClick = { onItemSelected(2) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color(0xFFF5F5F5),
+                    unselectedIconColor = Color.White,
+                    indicatorColor = Color(0xFF1960AB)
+                )
+            )
+            NavigationBarItem(
+                icon = {
+                    Icon(
+                        imageVector = Icons.Filled.Favorite,
+                        contentDescription = "Обране",
+                        modifier = Modifier.size(32.dp)
+                    )
+                },
+                selected = selectedItem == 3,
+                onClick = { onItemSelected(3) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color(0xFFF5F5F5),
+                    unselectedIconColor = Color.White,
+                    indicatorColor = Color(0xFF1960AB)
+                )
+            )
+            NavigationBarItem(
+                icon = {
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = "Профіль",
+                        modifier = Modifier.size(32.dp)
+                    )
+                },
+                selected = selectedItem == 4,
+                onClick = { onItemSelected(4) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color(0xFFF5F5F5),
+                    unselectedIconColor = Color.White,
+                    indicatorColor = Color(0xFF1960AB)
+                )
+            )
+        }
     }
 }
+
+
 
 
 

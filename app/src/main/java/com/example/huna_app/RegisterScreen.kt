@@ -2,17 +2,23 @@ package com.example.huna_app
 
 import android.net.Uri
 import android.util.Log
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -24,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -42,110 +49,135 @@ import java.util.Locale
 
 private lateinit var auth: FirebaseAuth
 @Composable
-fun RegisterScreen (navController: NavController){
+fun RegisterScreen(navController: NavController) {
 
     val auth = Firebase.auth
 
     val dateOfBirthState = remember { mutableStateOf("") }
+    var emailState = remember { mutableStateOf("") }
+    var passState = remember { mutableStateOf("") }
+    var passState1 = remember { mutableStateOf("") }
+    var nameState = remember { mutableStateOf("") }
 
-    var emailState = remember {
-        mutableStateOf("")
-    }
-    var passState = remember {
-        mutableStateOf("")
-    }
-    var passState1 = remember {
-        mutableStateOf("")
-    }
-    var nameState = remember {
-        mutableStateOf("")
-    }
-    Column(modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center) {
-        Text(text = "Welcome back")
-        OutlinedTextField(value = nameState.value, onValueChange = {
-            nameState.value = it
-        }, label = {
-            Text(text = "Full name")
-        })
-
-        OutlinedTextField(
-            value = dateOfBirthState.value,
-            onValueChange = { input ->
-                // Видаляємо всі зайві символи, залишаючи лише цифри
-                val digitsOnly = input.filter { it.isDigit() }
-
-                // Форматуємо рядок у вигляді "дд/мм/рррр"
-                val formattedDate = buildString {
-                    for (i in digitsOnly.indices) {
-                        append(digitsOnly[i])
-                        if ((i == 1 || i == 3) && i != digitsOnly.length - 1) {
-                            append("/") // Додаємо розділювач після дати та місяця
-                        }
-                    }
-                }
-
-                // Обмежуємо введення довжиною 10 символів (дд/мм/рррр)
-                if (formattedDate.length <= 10) {
-                    dateOfBirthState.value = formattedDate
-                }
-            },
-            label = { Text(text = "Date of Birth (dd/mm/yyyy)") },
-            placeholder = { Text(text = "dd/mm/yyyy") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), // Числова клавіатура
-            singleLine = true
+    // Оформлення для фону
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        // Виведення зображення як фон
+        Image(
+            painter = painterResource(id = R.drawable.splash),
+            contentDescription = null,  // Опис для доступності
+            modifier = Modifier.fillMaxSize()  // Робить зображення фоном, що покриває весь Box
         )
-
-        OutlinedTextField(value = emailState.value, onValueChange = {
-            emailState.value = it
-        }, label = {
-            Text(text = "Email")
-        })
-        OutlinedTextField(value = passState.value, onValueChange = {
-            passState.value = it
-        }, label = {
-            Text(text = "Password")
-        })
-        OutlinedTextField(value = passState1.value, onValueChange = {
-            passState1.value = it
-        }, label = {
-            Text(text = "Repeat Password")
-        })
-        Spacer(modifier = Modifier.height(10.dp))
-        Button(
-            onClick = { signUp(auth, emailState.value, passState.value, passState1.value, nameState.value, dateOfBirthState.value, navController) },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF6200EE), // Колір фону кнопки
-                contentColor = Color.White         // Колір тексту
-            ),
-            shape = RoundedCornerShape(12.dp),     // Закруглення кутів
+        Card(
             modifier = Modifier
-                .height(50.dp)
-                .width(200.dp),                    // Висота і ширина кнопки
-            elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = 8.dp,           // Тінь кнопки
-                pressedElevation = 4.dp            // Тінь при натисканні
-            )
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp) // Виправлення
+        ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "Sign up",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                text = "Create Account",
+                style = TextStyle(
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFF1960AB)
+                ),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = nameState.value,
+                onValueChange = { nameState.value = it },
+                label = { Text(text = "Full Name") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+
+            )
+
+            OutlinedTextField(
+                value = dateOfBirthState.value,
+                onValueChange = { input ->
+                    // Форматування дати
+                    val digitsOnly = input.filter { it.isDigit() }
+                    val formattedDate = buildString {
+                        for (i in digitsOnly.indices) {
+                            append(digitsOnly[i])
+                            if ((i == 1 || i == 3) && i != digitsOnly.length - 1) append("/")
+                        }
+                    }
+                    if (formattedDate.length <= 10) dateOfBirthState.value = formattedDate
+                },
+                label = { Text(text = "Date of Birth (dd/mm/yyyy)") },
+                placeholder = { Text(text = "dd/mm/yyyy") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            OutlinedTextField(
+                value = emailState.value,
+                onValueChange = { emailState.value = it },
+                label = { Text(text = "Email") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            OutlinedTextField(
+                value = passState.value,
+                onValueChange = { passState.value = it },
+                label = { Text(text = "Password") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            OutlinedTextField(
+                value = passState1.value,
+                onValueChange = { passState1.value = it },
+                label = { Text(text = "Repeat Password") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Button(
+                onClick = { signUp(auth, emailState.value, passState.value, passState1.value, nameState.value, dateOfBirthState.value, navController) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1960AB), contentColor = Color.White),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .height(50.dp)
+                    .width(200.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp, pressedElevation = 4.dp)
+            ) {
+                Text(text = "Sign Up", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            ClickableText(
+                text = AnnotatedString("LOGIN"),
+                style = TextStyle(
+                    color = Color(0xFF9586A8),
+                    fontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                    fontWeight = FontWeight.SemiBold
+                ),
+                onClick = { navController.navigate("login") }
             )
         }
-        Spacer(modifier = Modifier.height(10.dp))
-        ClickableText(
-            text = AnnotatedString("LOGIN"),
-            style = TextStyle(color = Color.Blue, fontSize = MaterialTheme.typography.bodyLarge.fontSize),
-            onClick = {
-                navController.navigate("login")
-            }
-        )
-
     }
-
-
+    }
 }
 
 private fun signUp(auth: FirebaseAuth, email: String, password: String, password1: String, name: String, dateOfBirth: String, navController: NavController){

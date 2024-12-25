@@ -2,31 +2,50 @@ package com.example.huna_app.main_nav
 
 import android.net.Uri
 import android.util.Log
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
+import coil.compose.rememberImagePainter
 import com.example.huna_app.Product
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -36,108 +55,186 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun AddScreen() {
+fun AddScreen(navController: NavHostController) {
     val db = FirebaseFirestore.getInstance()
     val currentUser = FirebaseAuth.getInstance().currentUser
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("Продаю") }
+    var category by remember { mutableStateOf("i sell") }
     var price by remember { mutableStateOf("") }
     var deliveryType by remember { mutableStateOf("Самовивіз") }
+    var errorMessage by remember { mutableStateOf("") }
+
+
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(16.dp)
+            .background(Color.White), // Світлий фон
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Поле для завантаження фото
-        Text(text = "Завантажити фото:")
-        UploadPhotoButton(photoUri) { newUri -> photoUri = newUri }
+        // Верхній заголовок із кнопкою назад
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Кнопка "Назад" зі стрілкою
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF1960AB))
+                    .clickable { navController.navigateUp() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
+            }
+            Text(
+                text = "Add item",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1960AB)
+            )
+        }
 
-        // Поле для назви товару
+        // Photo Upload Section
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .background(Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (photoUri != null) {
+                Image(
+                    painter = rememberImagePainter(photoUri),
+                    contentDescription = "Uploaded Photo",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                IconButton(onClick = { /* Open photo picker */ }) {
+                    Icon(Icons.Default.AddCircle, contentDescription = "Add Photo", tint = Color.Gray)
+                }
+            }
+        }
+
+        // Поле введення заголовку
         OutlinedTextField(
             value = title,
             onValueChange = { title = it },
-            label = { Text("Назва") },
-            modifier = Modifier.fillMaxWidth()
+            label = { Text("Title") },
+            modifier = Modifier
+                .fillMaxWidth(),
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp)
         )
 
-        // Поле для опису товару
+        // Поле введення опису
         OutlinedTextField(
             value = description,
             onValueChange = { description = it },
-            label = { Text("Опис") },
-            modifier = Modifier.fillMaxWidth()
+            label = { Text("Description") },
+            modifier = Modifier
+                .fillMaxWidth(),
+            maxLines = 4,
+            shape = RoundedCornerShape(12.dp)
         )
 
-        // Вибір категорії: "Шукаю" або "Продаю"
-        Text(text = "Категорія:")
-        Row {
-            RadioButton(
-                selected = category == "Продаю",
-                onClick = { category = "Продаю" }
+        // Поле для введення ціни та категорії
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = price,
+                onValueChange = { price = it },
+                label = { Text("Price") },
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                modifier = Modifier
+                    .weight(1f),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp)
             )
-            Text(text = "Продаю", modifier = Modifier.padding(start = 8.dp))
 
-            Spacer(modifier = Modifier.width(16.dp))
-
-            RadioButton(
-                selected = category == "Шукаю",
-                onClick = { category = "Шукаю" }
+            DropdownMenuField(
+                selectedOption = category,
+                options = listOf("I need", "I sell"),
+                onOptionSelected = { category = it },
             )
-            Text(text = "Шукаю", modifier = Modifier.padding(start = 8.dp))
         }
 
-        // Поле для ціни
-        OutlinedTextField(
-            value = price,
-            onValueChange = { price = it },
-            label = { Text("Ціна") },
-            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
-        // Поле для опису товару
-        OutlinedTextField(
-            value = address,
-            onValueChange = { address = it },
-            label = { Text("Address") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        // Вибір типу доставки
-        Text(text = "Тип доставки:")
-        DropdownMenuField(
-            selectedOption = deliveryType,
-            options = listOf("Самовивіз", "Доставка"),
-            onOptionSelected = { deliveryType = it }
-        )
-
-        // Кнопка для підтвердження
+        // Кнопка "Додати товар"
         Button(
             onClick = {
-                if (currentUser != null) {
+                errorMessage = validateInputs(title, description, price, address)
+                if (errorMessage.isEmpty() && currentUser != null) {
                     saveProductToFirestore(
                         title = title,
                         description = description,
                         price = price,
                         category = category,
                         address = address,
-                        deliveryType = deliveryType,
+                        deliveryType = "Самовивіз",
                         photoUri = photoUri,
                         db = db,
-                        currentUser = currentUser
+                        currentUser = currentUser!!,
+                        onSuccess = {
+                            // Очищення полів
+                            title = ""
+                            description = ""
+                            price = ""
+                            address = ""
+                            photoUri = null
+                            errorMessage = "Product added successfully."
+                        },
+                        onError = { error ->
+                            errorMessage = error
+                        }
                     )
-                } else {
-                    Log.e("AddScreen", "User is not logged in")
+                } else if (currentUser == null) {
+                    errorMessage = "Ви не увійшли в систему."
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            colors = ButtonDefaults.buttonColors(
+                Color(0xFF90B9F6),
+            )
         ) {
-            Text("Додати товар")
+            Text("Add item",
+                color = Color.White,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 20.sp,
+
+            )
         }
     }
+
 }
+
+
+fun validateInputs(title: String, description: String, price: String, address: String): String {
+    return when {
+        title.isEmpty() -> "Title is required."
+        description.isEmpty() -> "Description is required."
+        price.isEmpty() || price.toDoubleOrNull() == null -> "Enter a valid price."
+        else -> ""
+    }
+}
+
+
 
 
 @Composable
@@ -162,10 +259,10 @@ fun DropdownMenuField(selectedOption: String, options: List<String>, onOptionSel
             value = selectedOption,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Тип доставки") },
+            shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .menuAnchor()
-                .fillMaxWidth()
+
                 .clickable { expanded = true }
         )
         ExposedDropdownMenu(
@@ -196,13 +293,24 @@ fun saveProductToFirestore(
     photoUri: Uri?,
     db: FirebaseFirestore,
     currentUser: FirebaseUser,
+    onSuccess: () -> Unit,
+    onError: (String) -> Unit
 ) {
     try {
         // Валідація даних
-        if (title.isBlank() || description.isBlank() || price.toDoubleOrNull() == null) {
-            Log.e("SaveProduct", "Invalid product data")
+        if (title.isBlank()) {
+            onError("Title is required.")
             return
         }
+        if (description.isBlank()) {
+            onError("Description is required.")
+            return
+        }
+        if (price.toDoubleOrNull() == null) {
+            onError("Enter a valid price.")
+            return
+        }
+
 
         val imageUrl = photoUri?.toString() ?: ""
         val product = Product(
@@ -225,16 +333,16 @@ fun saveProductToFirestore(
                 val productId = documentReference.id
                 documentReference.update("id", productId)
                     .addOnSuccessListener {
-                        Log.d("Firestore", "Product ID updated successfully")
+                        onSuccess()
                     }
                     .addOnFailureListener { e ->
-                        Log.e("Firestore", "Error updating product ID", e)
+                        onError("Error updating product ID: ${e.message}")
                     }
             }
             .addOnFailureListener { e ->
-                Log.e("Firestore", "Error adding product", e)
+                onError("Error adding product: ${e.message}")
             }
     } catch (e: Exception) {
-        Log.e("SaveProduct", "Error saving product", e)
+        onError("Unexpected error: ${e.message}")
     }
 }
