@@ -26,13 +26,13 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -53,12 +53,12 @@ fun FavoritesScreen(navController: NavHostController) {
     val db = FirebaseFirestore.getInstance()
     val userId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
 
-    // Стан для обраних товарів, завантаження та помилок
+
     val favoriteProducts = remember { mutableStateOf<List<Product>>(emptyList()) }
     val isLoading = remember { mutableStateOf(true) }
     val errorMessage = remember { mutableStateOf<String?>(null) }
 
-    // Завантаження обраних товарів із динамічним оновленням
+
     LaunchedEffect(userId) {
         try {
             db.collection("favorites").document(userId)
@@ -77,7 +77,7 @@ fun FavoritesScreen(navController: NavHostController) {
                             .whereIn("id", productIds)
                             .addSnapshotListener { productSnapshots, productError ->
                                 if (productError != null) {
-                                    errorMessage.value = "Помилка завантаження товарів: ${productError.message}"
+                                    errorMessage.value = productError.message
                                     isLoading.value = false
                                     return@addSnapshotListener
                                 }
@@ -92,16 +92,16 @@ fun FavoritesScreen(navController: NavHostController) {
                     }
                 }
         } catch (e: Exception) {
-            errorMessage.value = "Помилка завантаження обраних товарів: ${e.message}"
+            errorMessage.value = e.message
             isLoading.value = false
         }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Верхній заголовок із кнопкою "Назад"
+
         TopBar(navController)
 
-        // Основний контент
+
         when {
             isLoading.value -> {
                 Box(
@@ -138,7 +138,7 @@ fun FavoritesScreen(navController: NavHostController) {
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("У вас немає обраних товарів.")
+                    Text("You don't have any products")
                 }
             }
         }
@@ -182,18 +182,18 @@ fun TopBar(navController: NavHostController) {
 
 @Composable
 fun ProductItem(product: Product, navController: NavHostController) {
-    val sellerName = remember { mutableStateOf("Завантаження...") }
+    val sellerName = remember { mutableStateOf("Loading...") }
     val db = FirebaseFirestore.getInstance()
     val userId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
     val isRemoving = remember { mutableStateOf(false) }
 
-    // Завантаження імені продавця
+
     LaunchedEffect(product.ownerId) {
         try {
             val document = db.collection("users").document(product.ownerId).get().await()
-            sellerName.value = document.getString("name") ?: "Невідомий продавець"
+            sellerName.value = document.getString("name") ?: "Unknown"
         } catch (e: Exception) {
-            sellerName.value = "Помилка завантаження"
+            sellerName.value = "Error"
         }
     }
 
@@ -201,7 +201,9 @@ fun ProductItem(product: Product, navController: NavHostController) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { navController.navigate("product_details/${product.id}") }, // Перехід на сторінку деталей товару
+            .clickable { navController.navigate("product_details/${product.id}") }
+            .shadow(2.dp, shape = RoundedCornerShape(8.dp)),
+
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
     ) {
@@ -211,7 +213,7 @@ fun ProductItem(product: Product, navController: NavHostController) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Зображення товару
+
             val imageModifier = Modifier
                 .size(100.dp)
                 .clip(RoundedCornerShape(8.dp))
@@ -220,7 +222,7 @@ fun ProductItem(product: Product, navController: NavHostController) {
             if (product.imageUrl.isNotEmpty()) {
                 AsyncImage(
                     model = product.imageUrl,
-                    contentDescription = "Зображення товару",
+                    contentDescription = "Item photo",
                     modifier = imageModifier,
                     contentScale = ContentScale.Crop
                 )
@@ -255,12 +257,12 @@ fun ProductItem(product: Product, navController: NavHostController) {
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Продавець: ${sellerName.value}",
+                    text = sellerName.value,
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                // Ціна
+
                 Box(
                     modifier = Modifier
                         .background(Color(0xFF90B9F6), RoundedCornerShape(8.dp))

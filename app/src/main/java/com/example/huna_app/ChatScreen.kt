@@ -55,7 +55,6 @@ import java.util.Locale
 @Composable
 fun ChatScreen(
     chatId: String,
-    productId: String,
     userId: String,
     onNavigateBack: () -> Unit,
     navController: NavHostController
@@ -67,28 +66,45 @@ fun ChatScreen(
     val sellerName = remember { mutableStateOf<String?>(null) }
     val isLoading = remember { mutableStateOf(true) }
 
+    val productId = remember { mutableStateOf<String?>(null) }
+
+    // Завантаження productId із чату
+    LaunchedEffect(chatId) {
+        val db = FirebaseFirestore.getInstance()
+        try {
+            val chatDoc = db.collection("chats").document(chatId).get().await()
+            productId.value = chatDoc.getString("productId")
+        } catch (e: Exception) {
+            productId.value = null
+        }
+    }
+
     // Завантаження даних про товар
-    LaunchedEffect(productId) {
-        getProductInfo(productId) { productDetails ->
-            productInfo.value = productDetails
-            isLoading.value = false
+    LaunchedEffect(productId.value) {
+        productId.value?.let {
+            getProductInfo(it) { productDetails ->
+                productInfo.value = productDetails
+                isLoading.value = false
+            }
         }
     }
 
     // Завантаження імені продавця
-    LaunchedEffect(productId) {
-        val db = FirebaseFirestore.getInstance()
-        try {
-            val productDoc = db.collection("products").document(productId).get().await()
-            val ownerId = productDoc.getString("ownerId")
-            if (ownerId != null) {
-                val userDoc = db.collection("users").document(ownerId).get().await()
-                sellerName.value = userDoc.getString("name") ?: "Невідомий продавець"
-            } else {
-                sellerName.value = "Невідомий продавець"
+    LaunchedEffect(productId.value) {
+        productId.value?.let {
+            val db = FirebaseFirestore.getInstance()
+            try {
+                val productDoc = db.collection("products").document(it).get().await()
+                val ownerId = productDoc.getString("ownerId")
+                if (ownerId != null) {
+                    val userDoc = db.collection("users").document(ownerId).get().await()
+                    sellerName.value = userDoc.getString("name") ?: "Невідомий продавець"
+                } else {
+                    sellerName.value = "Невідомий продавець"
+                }
+            } catch (e: Exception) {
+                sellerName.value = "Помилка завантаження"
             }
-        } catch (e: Exception) {
-            sellerName.value = "Помилка завантаження"
         }
     }
 
@@ -108,13 +124,13 @@ fun ChatScreen(
                 .background(Color(0xFF1960AB)) // Колір фону
                 .clickable {
                     // Перевірка на наявність productId перед переходом
-                    if (productId.isNotEmpty()) {
-                        navController.navigate("product_details/${productId}")
+                    productId.value?.let {
+                        navController.navigate("product_details/$it")
                     }
                 }
                 .padding(16.dp)
                 .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)) // Закруглені нижні кути
-        ){
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
@@ -185,59 +201,45 @@ fun ChatScreen(
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Поле для введення повідомлення
-            Row(
+            OutlinedTextField(
+                value = messageText.value,
+                onValueChange = { messageText.value = it },
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .weight(1f),
+                label = { Text("Your message") },
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Button(
+                onClick = {
+                    if (messageText.value.isNotEmpty()) {
+                        sendMessage(chatId, userId, messageText.value)
+                        messageText.value = "" // Очищуємо поле після відправлення
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF1960AB),
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(12.dp), // Округлення для кнопки
+                modifier = Modifier
+                    .height(50.dp) // Висота кнопки
+                    .wrapContentWidth(), // Кнопка має фіксовану ширину, що відповідає її вмісту
+                elevation = ButtonDefaults.buttonElevation(8.dp) // Тінь для кнопки
             ) {
-                OutlinedTextField(
-                    value = messageText.value,
-                    onValueChange = { messageText.value = it },
-                    modifier = Modifier
-                        .weight(1f),
-                    label = { Text("Your message") },
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true
+                Text(
+                    text = "Send",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
                 )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Button(
-                    onClick = {
-                        if (messageText.value.isNotEmpty()) {
-                            sendMessage(chatId, userId, messageText.value)
-                            messageText.value = "" // Очищуємо поле після відправлення
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1960AB),
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(12.dp), // Округлення для кнопки
-                    modifier = Modifier
-                        .height(50.dp) // Висота кнопки
-                        .wrapContentWidth(), // Кнопка має фіксовану ширину, що відповідає її вмісту
-                    elevation = ButtonDefaults.buttonElevation(8.dp) // Тінь для кнопки
-                ) {
-                    Text(
-                        text = "Send",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
-
-
-
         }
     }
 }
 
-fun onNavigateToProduct(productId: String, navController: NavController) {
-    navController.navigate("product_details/$productId")
-}
 
 
 // Функція для отримання даних про товар
@@ -343,46 +345,9 @@ fun sendMessage(chatId: String, userId: String, messageText: String) {
 }
 
 
-
-@Composable
-fun MessageBubble(message: Message, isCurrentUser: Boolean) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        horizontalArrangement = if (isCurrentUser) Arrangement.End else Arrangement.Start
-    ) {
-        Box(
-            modifier = Modifier
-                .background(
-                    color = if (isCurrentUser) Color(0xFF1960AB) else Color(0xFFE0E0E0),
-                    shape = RoundedCornerShape(16.dp)
-                )
-                .padding(12.dp)
-        ) {
-            Column {
-                Text(
-                    text = message.message,
-                    color = if (isCurrentUser) Color.White else Color.Black,
-                    fontSize = 16.sp
-                )
-                Text(
-                    text = formatTimestamp(message.timestamp),
-                    color = if (isCurrentUser) Color(0xFFB0C4DE) else Color.Gray,
-                    fontSize = 12.sp,
-                    modifier = Modifier.align(Alignment.End)
-                )
-            }
-        }
-    }
-}
 fun Long.formatToReadableTime(): String {
     val date = Date(this)
     val format = SimpleDateFormat("HH:mm", Locale.getDefault()) // Формат години:хвилини
     return format.format(date)
 }
-fun formatTimestamp(timestamp: Long): String {
-    val date = Date(timestamp)
-    val format = SimpleDateFormat("HH:mm", Locale.getDefault())
-    return format.format(date)
-}
+

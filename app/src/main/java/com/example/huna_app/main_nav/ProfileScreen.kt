@@ -17,35 +17,27 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,6 +50,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -71,13 +64,8 @@ import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.example.huna_app.Product
-import com.example.huna_app.User
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.tasks.await
 
 
@@ -242,7 +230,6 @@ fun UsersItems(navController: NavHostController) {
     val products = remember { mutableStateListOf<Product>() }
     var productToEdit by remember { mutableStateOf<Product?>(null) }
 
-    // Завантаження товарів
     LaunchedEffect(user) {
         user?.let {
             db.collection("products")
@@ -327,15 +314,8 @@ fun UsersItems(navController: NavHostController) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Top
             ) {
-                Icon(
-                    imageVector = Icons.Filled.ShoppingCart,
-                    contentDescription = null,
-                    tint = Color.Gray,
-                    modifier = Modifier.size(64.dp)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "У вас немає товарів",
+                    text = "You don't have any product",
                     fontSize = 18.sp,
                     color = Color.Gray,
                     textAlign = TextAlign.Center
@@ -375,7 +355,8 @@ fun ProductItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { navController.navigate("product_details/${product.id}") }, // Перехід на сторінку деталей товару
+            .clickable { navController.navigate("product_details/${product.id}") }
+            .shadow(2.dp, shape = RoundedCornerShape(8.dp)),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
     ) {
@@ -385,7 +366,7 @@ fun ProductItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Зображення товару
+
             val imageModifier = Modifier
                 .size(100.dp)
                 .clip(RoundedCornerShape(8.dp))
@@ -394,7 +375,7 @@ fun ProductItem(
             if (product.imageUrl.isNotEmpty()) {
                 AsyncImage(
                     model = product.imageUrl,
-                    contentDescription = "Зображення товару",
+                    contentDescription = "Item photo",
                     modifier = imageModifier,
                     contentScale = ContentScale.Crop
                 )
@@ -413,7 +394,7 @@ fun ProductItem(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Інформація про товар
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = product.name,
@@ -429,7 +410,7 @@ fun ProductItem(
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
-                // Ціна
+
                 Box(
                     modifier = Modifier
                         .background(Color(0xFF90B9F6), RoundedCornerShape(8.dp))
@@ -543,7 +524,7 @@ fun EditProductDialog(
                         )
                     )
                 } else {
-                    // Можна додати логіку для відображення помилки, якщо ціна некоректна
+
                 }
             }) {
                 Text("Save")
@@ -560,7 +541,6 @@ fun EditProductDialog(
 
 @Composable
 fun AccountSettingsScreen(navController: NavHostController) {
-
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
 
@@ -570,7 +550,6 @@ fun AccountSettingsScreen(navController: NavHostController) {
 
     var showChangeAddressDialog by remember { mutableStateOf(false) }
     var showChangeNameDialog by remember { mutableStateOf(false) }
-    var showChangePasswordDialog by remember { mutableStateOf(false) }
 
     val userId = auth.currentUser?.uid
 
@@ -686,13 +665,6 @@ fun AccountSettingsScreen(navController: NavHostController) {
             onClick = { showChangeAddressDialog = true },
             icon = Icons.Default.Home
         )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        ProfileButton(
-            text = "Change Password",
-            onClick = { showChangePasswordDialog = true },
-            icon = Icons.Default.Lock
-        )
 
         if (showChangeAddressDialog) {
             ChangeAddressDialog(onDismiss = { showChangeAddressDialog = false }, onAddressChange = { newAddress ->
@@ -708,9 +680,6 @@ fun AccountSettingsScreen(navController: NavHostController) {
             })
         }
 
-        if (showChangePasswordDialog) {
-            ChangePasswordDialog(onDismiss = { showChangePasswordDialog = false })
-        }
     }
 }
 
@@ -772,35 +741,6 @@ fun ChangeNameDialog(onDismiss: () -> Unit, onNameChange: (String) -> Unit) {
     )
 }
 
-@Composable
-fun ChangePasswordDialog(onDismiss: () -> Unit) {
-    var newPassword by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Change Password") },
-        text = {
-            Column {
-                Text("Enter your new password:")
-                TextField(value = newPassword, onValueChange = { newPassword = it })
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                updatePassword(newPassword)
-                onDismiss()
-            }) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
 fun updateUserAddress(userId: String?, newAddress: String) {
     val db = FirebaseFirestore.getInstance()
     userId?.let {
@@ -815,23 +755,16 @@ fun updateUserName(userId: String?, newName: String) {
     }
 }
 
-fun updatePassword(newPassword: String) {
-    val auth = FirebaseAuth.getInstance()
-    auth.currentUser?.updatePassword(newPassword)
-}
-
-
-
 
 
 fun deleteAccount(auth: FirebaseAuth, userId: String, navController: NavController) {
-    // Видалити всі товари користувача
+
     deleteUserProducts(userId) { isProductDeleted ->
         if (isProductDeleted) {
-            // Товари успішно видалені, тепер видаляємо дані користувача з Firestore
+
             deleteUserDataFromFirestore(userId) { isUserDataDeleted ->
                 if (isUserDataDeleted) {
-                    // Якщо дані користувача також видалені, видаляємо акаунт
+
                     auth.currentUser?.delete()
                         ?.addOnCompleteListener { task ->
                             if (task.isSuccessful) {
@@ -1007,7 +940,7 @@ fun AllSettingsScreen(navController: NavHostController){
             text = "Logout",
             onClick = {
                 auth.signOut()
-                navController.navigate("login") { // Перехід на екран логіну
+                navController.navigate("login") {
                     popUpTo("profile") { inclusive = true }
                 }},
             icon = Icons.Default.ExitToApp
@@ -1029,7 +962,7 @@ fun AllSettingsScreen(navController: NavHostController){
                 text = { Text("This action cannot be undone.") },
                 confirmButton = {
                     TextButton(onClick = {
-                        // Викликаємо функцію видалення акаунта та його даних
+
                         if (userId != null) {
                             deleteAccount(auth, userId, navController)
                         }

@@ -249,7 +249,7 @@ fun ProductDetailScreen(productId: String?, navController: NavHostController) {
                     onClick = {
                         if (productId != null) {
                             createChatIfNotExists(productId) { chatId ->
-                                navController.navigate("chat/$chatId/$productId") // Передаємо productId у маршрут
+                                navController.navigate("chat/$chatId")
                             }
                         }
                     },

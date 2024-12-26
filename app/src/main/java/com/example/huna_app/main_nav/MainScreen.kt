@@ -3,7 +3,6 @@ package com.example.huna_app.main_nav
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,7 +27,6 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,11 +37,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -54,18 +51,12 @@ import kotlinx.coroutines.tasks.await
 
 @Composable
 fun MainScreen(db: FirebaseFirestore, navController: NavHostController) {
-    // Список всіх товарів
     val allProductsList = remember { mutableStateListOf<Product>() }
-    // Список відфільтрованих товарів
     val filteredProductsList = remember { mutableStateListOf<Product>() }
-    // Стан для пошукового запиту
     var searchQuery by remember { mutableStateOf("") }
-    // Стан для вибору категорії
     var selectedCategory by remember { mutableStateOf("Усі") }
-    // Список категорій
     val categories = listOf("Усі", "Продаю", "Шукаю")
 
-    // Запит до Firestore для отримання всіх товарів
     LaunchedEffect(Unit) {
         db.collection("products")
             .get()
@@ -89,13 +80,13 @@ fun MainScreen(db: FirebaseFirestore, navController: NavHostController) {
         filteredProductsList.clear()
         filteredProductsList.addAll(
             allProductsList.filter { product ->
-                (selectedCategory == "Усі" || product.category == selectedCategory) &&
+                (selectedCategory == "All" || product.category == selectedCategory) &&
                         product.name.contains(searchQuery, ignoreCase = true)
             }
         )
     }
 
-    // Інтерфейс головної сторінки
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -134,17 +125,17 @@ fun MainScreen(db: FirebaseFirestore, navController: NavHostController) {
                 items(filteredProductsList) { product ->
                     ProductItems(
                         product = product,
-                        navController = navController // Передаємо навігатор
+                        navController = navController
                     )
                 }
             }
         } else {
-            // Виводимо повідомлення, якщо немає результатів
+
             Text(
-                text = if (searchQuery.isEmpty() && selectedCategory == "Усі")
-                    "Немає доступних товарів"
+                text = if (searchQuery.isEmpty() && selectedCategory == "All")
+                    "Nothing found"
                 else
-                    "Нічого не знайдено",
+                    "Nothing found",
                 fontSize = 16.sp,
                 color = Color.Gray
             )
@@ -210,17 +201,17 @@ fun CategoryDropdown(
 
 @Composable
 fun ProductItems(product: Product, navController: NavHostController) {
-    // Стан для збереження імені продавця
-    var sellerName by remember { mutableStateOf("Завантаження...") }
 
-    // Завантаження імені з Firestore
+    var sellerName by remember { mutableStateOf("Loading...") }
+
+
     LaunchedEffect(product.ownerId) {
         val db = FirebaseFirestore.getInstance()
         try {
             val document = db.collection("users").document(product.ownerId).get().await()
-            sellerName = document.getString("name") ?: "Невідомий продавець"
+            sellerName = document.getString("name") ?: "Unknown"
         } catch (e: Exception) {
-            sellerName = "Помилка завантаження"
+            sellerName = "Error"
         }
     }
 
@@ -228,9 +219,11 @@ fun ProductItems(product: Product, navController: NavHostController) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
+
             .clickable {
-                navController.navigate("product_details/${product.id}") // Переходимо на сторінку деталей товару
-            },
+                navController.navigate("product_details/${product.id}")
+            }
+            .shadow(2.dp, shape = RoundedCornerShape(8.dp)),
 
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
@@ -251,7 +244,7 @@ fun ProductItems(product: Product, navController: NavHostController) {
             if (product.imageUrl.isNotEmpty()) {
                 AsyncImage(
                     model = product.imageUrl,
-                    contentDescription = "Зображення товару",
+                    contentDescription = "Item photo",
                     modifier = imageModifier,
                     contentScale = ContentScale.Crop
                 )
@@ -271,7 +264,7 @@ fun ProductItems(product: Product, navController: NavHostController) {
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Інформація про товар
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = product.name,
@@ -285,13 +278,13 @@ fun ProductItems(product: Product, navController: NavHostController) {
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Продавець: $sellerName",
+                    text = sellerName,
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
             }
 
-            // Ціна
+
             Box(
                 modifier = Modifier
                     .background(Color(0xFF90B9F6), RoundedCornerShape(8.dp))

@@ -1,10 +1,10 @@
 package com.example.huna_app
 
 data class Favorite(
-    val userId: String = "",  // Значення за замовчуванням
-    val productLinks: List<String> = emptyList()  // Значення за замовчуванням
+    val userId: String = "",
+    val productLinks: List<String> = emptyList()
 ) {
-    // Потрібен конструктор без параметрів для Firestore
+
     constructor() : this("", emptyList())
 }
 

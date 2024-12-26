@@ -1,11 +1,10 @@
 package com.example.huna_app
 
 data class User(
-    var id: String = "",       // Значення за замовчуванням для id
-    var name: String = "",     // Значення за замовчуванням для name
-    var age: String = "",      // Значення за замовчуванням для age
-    var address: String = ""   // Значення за замовчуванням для address
+    var id: String = "",
+    var name: String = "",
+    var age: String = "",
+    var address: String = ""
 ) {
-    // Конструктор без параметрів для Firestore
     constructor() : this("", "", "", "")
 }

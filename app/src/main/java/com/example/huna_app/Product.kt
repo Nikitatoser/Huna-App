@@ -1,7 +1,7 @@
 package com.example.huna_app
 
 data class Product(
-    var id: String = "",  // Змінюємо тип на String
+    var id: String = "",
     var name: String = "",
     var description: String = "",
     var price: Double = 0.0,

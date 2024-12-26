@@ -128,20 +128,16 @@ fun HomeScreen(navController: NavController) {
                 val productId = backStackEntry.arguments?.getString("productId")
                 ProductDetailScreen(productId, navController)
             }
-            composable("chat/{chatId}/{productId}") { backStackEntry ->
+            composable("chat/{chatId}") { backStackEntry ->
                 val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
-                val productId = backStackEntry.arguments?.getString("productId") ?: ""
 
                 ChatScreen(
                     chatId = chatId,
-                    productId = productId,
                     userId = FirebaseAuth.getInstance().currentUser?.uid ?: "",
                     onNavigateBack = { navController.popBackStack() },
                     navController = navController
                 )
             }
-
-
 
 
         }

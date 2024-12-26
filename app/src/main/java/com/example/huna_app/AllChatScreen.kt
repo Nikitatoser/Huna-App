@@ -1,136 +1,159 @@
 package com.example.huna_app
 
+import android.util.Log
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
+import androidx.navigation.NavController
 
 @Composable
-fun AllChatScreen(navController: NavHostController) {
+fun AllChatScreen(navController: NavController) {
     val db = FirebaseFirestore.getInstance()
-    val chats = remember { mutableStateListOf<Chat>() }
-    val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-    val scope = rememberCoroutineScope()
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    var chats by remember { mutableStateOf<List<Map<String, Any>>?>(null) }
 
-    LaunchedEffect(userId) {
-        // Завантаження списку чатів користувача
-        db.collection("chats")
-            .whereArrayContains("participants", userId)
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) {
-                    println("Error getting documents: $e")
-                    return@addSnapshotListener
+    LaunchedEffect(Unit) {
+        currentUser?.uid?.let { userId ->
+            db.collection("chats")
+                .whereArrayContains("participants", userId)
+                .get()
+                .addOnSuccessListener { querySnapshot ->
+                    chats = querySnapshot.documents.mapNotNull { it.data?.plus("id" to it.id) }
                 }
+                .addOnFailureListener { e ->
+                    chats = emptyList()
+                    Log.e("Chats", "Failed to fetch chats: ${e.message}")
+                }
+        }
+    }
 
-                // Очищуємо попередній список чатів
-                chats.clear()
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Your Chats",
+            fontSize = 40.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF1960AB),
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
 
-                snapshot?.documents?.forEach { document ->
-                    val chatId = document.id
-                    val chat = document.toObject(Chat::class.java)
+        Box(modifier = Modifier.fillMaxSize()) {
+            when {
+                chats == null -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+                chats!!.isEmpty() -> {
+                    Text(
+                        text = "No chats found",
 
-                    if (chat != null) {
-                        // Завантаження останнього повідомлення та назви товару
-                        scope.launch {
-                            val lastMessage = db.collection("chats")
-                                .document(chatId)
-                                .collection("messages")
-                                .orderBy("timestamp", Query.Direction.DESCENDING)
-                                .limit(1)
-                                .get()
-                                .await()
-                                .documents
-                                .firstOrNull()
-                                ?.toObject(Message::class.java)
-
-                            val productName = chat.productId?.let { productId ->
-                                db.collection("products")
-                                    .document(productId)
-                                    .get()
-                                    .await()
-                                    .getString("name") ?: "Unknown product"
+                        color = Color.LightGray,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(chats!!) { chat ->
+                            ChatItem(chat, db) { chatId ->
+                                navController.navigate("chat/$chatId")
                             }
-
-                            // Оновлення списку чатів
-                            val updatedChat = chat.copy(
-                                lastMessage = lastMessage?.message ?: "No messages",
-                                timestamp = lastMessage?.timestamp ?: 0L,
-                                productId = productName
-                            )
-
-                            chats.add(updatedChat)
                         }
                     }
                 }
             }
-    }
-
-    // Інтерфейс списку чатів
-    Column(modifier = Modifier.fillMaxSize()) {
-        LazyColumn {
-            items(chats) { chat ->
-                ChatItem(chat = chat, navController = navController)
-            }
         }
     }
 }
 
 @Composable
-fun ChatItem(chat: Chat, navController: NavHostController) {
-    val otherUserId = chat.participants.firstOrNull { it != FirebaseAuth.getInstance().currentUser?.uid } ?: "Unknown user"
+fun ChatItem(chat: Map<String, Any>, db: FirebaseFirestore, onClick: (String) -> Unit) {
+    val chatId = chat["id"] as? String ?: return
+    val productId = chat["productId"] as? String ?: "Unknown Product"
+    var productName by remember { mutableStateOf<String?>(null) }
+    var lastMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(productId) {
+        db.collection("products").document(productId).get()
+            .addOnSuccessListener { document ->
+                productName = document.getString("name")
+            }
+
+        db.collection("chats").document(chatId).collection("chats")
+            .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .limit(1)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                if (!snapshot.isEmpty) {
+                    val message = snapshot.documents[0]
+                    lastMessage = message.getString("text")
+                }
+            }
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp)
-            .clickable {
-                navController.navigate("chat/${chat.chatId}/${chat.productId}")
-            }
-    ) {
+            .clickable { onClick(chatId) }
+            .shadow(2.dp, shape = RoundedCornerShape(8.dp)),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFF5F5F5))
+    )  {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = "Chat with $otherUserId", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text(text = chat.lastMessage ?: "", fontSize = 14.sp, color = Color.Gray)
-                Text(text = "Product: ${chat.productId}", fontSize = 14.sp, color = Color.DarkGray)
+                Text(
+                    text = productName ?: "Loading...",
+                    fontSize = 25.sp,
+                    fontWeight = FontWeight.Bold,
+
+                )
             }
-            Text(text = formatTime(chat.timestamp), fontSize = 12.sp, color = Color.Gray)
+            Spacer(modifier = Modifier.width(16.dp))
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF1960AB)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowForward,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
+            }
         }
     }
 }
-
-// Форматування часу
-fun formatTime(timestamp: Long): String {
-    val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-    return formatter.format(Date(timestamp))
-}
-
 
 

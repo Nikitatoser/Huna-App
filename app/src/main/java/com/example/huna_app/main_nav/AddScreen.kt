@@ -1,7 +1,6 @@
 package com.example.huna_app.main_nav
 
 import android.net.Uri
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,10 +18,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -31,6 +28,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,21 +60,31 @@ fun AddScreen(navController: NavHostController) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("i sell") }
+    var category by remember { mutableStateOf("I sell") }
     var price by remember { mutableStateOf("") }
-    var deliveryType by remember { mutableStateOf("Самовивіз") }
     var errorMessage by remember { mutableStateOf("") }
 
+    LaunchedEffect(currentUser) {
+        currentUser?.let { user ->
+            db.collection("users").document(user.uid).get()
+                .addOnSuccessListener { document ->
+                    address = document.getString("address") ?: ""
+                }
+                .addOnFailureListener {
+                    address = ""
+                }
+        }
+    }
 
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
-            .background(Color.White), // Світлий фон
+            .background(Color.White),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Верхній заголовок із кнопкою назад
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -84,7 +92,7 @@ fun AddScreen(navController: NavHostController) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Кнопка "Назад" зі стрілкою
+
             Box(
                 modifier = Modifier
                     .size(50.dp)
@@ -107,7 +115,7 @@ fun AddScreen(navController: NavHostController) {
             )
         }
 
-        // Photo Upload Section
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -123,7 +131,7 @@ fun AddScreen(navController: NavHostController) {
                     contentScale = ContentScale.Crop
                 )
             } else {
-                IconButton(onClick = { /* Open photo picker */ }) {
+                IconButton(onClick = {}) {
                     Icon(Icons.Default.AddCircle, contentDescription = "Add Photo", tint = Color.Gray)
                 }
             }
@@ -150,6 +158,17 @@ fun AddScreen(navController: NavHostController) {
             maxLines = 4,
             shape = RoundedCornerShape(12.dp)
         )
+        // Поле введення адреси
+        OutlinedTextField(
+            value = address,
+            onValueChange = { address = it },
+            label = { Text("Address") },
+            modifier = Modifier
+                .fillMaxWidth(),
+            maxLines = 2,
+            shape = RoundedCornerShape(12.dp)
+        )
+
 
         // Поле для введення ціни та категорії
         Row(
@@ -185,12 +204,12 @@ fun AddScreen(navController: NavHostController) {
                         price = price,
                         category = category,
                         address = address,
-                        deliveryType = "Самовивіз",
+                        deliveryType = "Pick up",
                         photoUri = photoUri,
                         db = db,
                         currentUser = currentUser!!,
                         onSuccess = {
-                            // Очищення полів
+
                             title = ""
                             description = ""
                             price = ""
@@ -203,7 +222,7 @@ fun AddScreen(navController: NavHostController) {
                         }
                     )
                 } else if (currentUser == null) {
-                    errorMessage = "Ви не увійшли в систему."
+                    errorMessage = "You must login"
                 }
             },
             modifier = Modifier
@@ -240,7 +259,7 @@ fun validateInputs(title: String, description: String, price: String, address: S
 @Composable
 fun UploadPhotoButton(photoUri: Uri?, onPhotoSelected: (Uri?) -> Unit) {
     Button(onClick = {
-        // Логіка для вибору фото
+
     }) {
         Text(if (photoUri != null) "Фото завантажено" else "Вибрати фото")
     }
