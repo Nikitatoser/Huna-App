@@ -1,8 +1,7 @@
 package com.example.huna_app
 
-import android.net.Uri
+
 import android.util.Log
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,10 +14,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -30,11 +33,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -43,39 +47,33 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.ktx.Firebase
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
-private lateinit var auth: FirebaseAuth
 @Composable
 fun RegisterScreen(navController: NavController) {
 
     val auth = Firebase.auth
 
     val dateOfBirthState = remember { mutableStateOf("") }
-    var emailState = remember { mutableStateOf("") }
-    var passState = remember { mutableStateOf("") }
-    var passState1 = remember { mutableStateOf("") }
-    var nameState = remember { mutableStateOf("") }
+    val emailState = remember { mutableStateOf("") }
+    val passState = remember { mutableStateOf("") }
+    val passState1 = remember { mutableStateOf("") }
+    val nameState = remember { mutableStateOf("") }
 
-    // Оформлення для фону
+    var isPasswordVisible by remember { mutableStateOf(false) }
+    var isRepeatPasswordVisible by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        // Виведення зображення як фон
-        Image(
-            painter = painterResource(id = R.drawable.splash),
-            contentDescription = null,  // Опис для доступності
-            modifier = Modifier.fillMaxSize()  // Робить зображення фоном, що покриває весь Box
-        )
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
             shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp) // Виправлення
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFFF5F5F5))
         ) {
         Column(
             modifier = Modifier
@@ -108,22 +106,14 @@ fun RegisterScreen(navController: NavController) {
             OutlinedTextField(
                 value = dateOfBirthState.value,
                 onValueChange = { input ->
-                    // Форматування дати
-                    val digitsOnly = input.filter { it.isDigit() }
-                    val formattedDate = buildString {
-                        for (i in digitsOnly.indices) {
-                            append(digitsOnly[i])
-                            if ((i == 1 || i == 3) && i != digitsOnly.length - 1) append("/")
-                        }
-                    }
-                    if (formattedDate.length <= 10) dateOfBirthState.value = formattedDate
+                    val filteredInput = input.filter { it.isDigit() || it == '-' }
+                    if (filteredInput.length <= 10) dateOfBirthState.value = filteredInput
                 },
-                label = { Text(text = "Date of Birth (dd/mm/yyyy)") },
-                placeholder = { Text(text = "dd/mm/yyyy") },
+                label = { Text("Date") },
+                placeholder = { Text("yyyy-MM-dd") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                singleLine = true
             )
 
             OutlinedTextField(
@@ -139,7 +129,19 @@ fun RegisterScreen(navController: NavController) {
                 onValueChange = { passState.value = it },
                 label = { Text(text = "Password") },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    val icon = if (isPasswordVisible) Icons.Default.Lock else Icons.Default.Lock
+                    IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = if (isPasswordVisible) "Hide password" else "Show password"
+                        )
+                    }
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                singleLine = true
             )
 
             OutlinedTextField(
@@ -147,8 +149,21 @@ fun RegisterScreen(navController: NavController) {
                 onValueChange = { passState1.value = it },
                 label = { Text(text = "Repeat Password") },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                visualTransformation = if (isRepeatPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    val icon = if (isRepeatPasswordVisible) Icons.Default.Lock else Icons.Default.Lock
+                    IconButton(onClick = { isRepeatPasswordVisible = !isRepeatPasswordVisible }) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = if (isRepeatPasswordVisible) "Hide password" else "Show password"
+                        )
+                    }
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                singleLine = true
             )
+
 
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -206,10 +221,9 @@ fun saveUserToFirestore(
     name: String,
     date: String,
     db: FirebaseFirestore,
-    user: FirebaseUser // Передаємо поточного користувача для отримання його UID
+    user: FirebaseUser
 ) {
     try {
-        // Валідація імені
         if (name.isBlank()) {
             Log.e("SaveUser", "Name cannot be empty")
             return
@@ -219,17 +233,15 @@ fun saveUserToFirestore(
             return
         }
 
-        // Створення об'єкта User з UID як ID
         val userData = User(
-            id = user.uid,  // Використовуємо UID з FirebaseAuth
+            id = user.uid,
             name = name,
             age = date,
             address = null.toString()
         )
 
-        // Додавання користувача у Firestore з UID як ID документа
         db.collection("users")
-            .document(user.uid)  // Використовуємо UID як ID для документа
+            .document(user.uid)
             .set(userData)
             .addOnSuccessListener {
                 Log.d("Firestore", "User added successfully with UID: ${user.uid}")

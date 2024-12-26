@@ -24,14 +24,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,10 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import androidx.navigation.NavHostController
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
@@ -68,7 +60,6 @@ fun ChatScreen(
 
     val productId = remember { mutableStateOf<String?>(null) }
 
-    // Завантаження productId із чату
     LaunchedEffect(chatId) {
         val db = FirebaseFirestore.getInstance()
         try {
@@ -79,7 +70,7 @@ fun ChatScreen(
         }
     }
 
-    // Завантаження даних про товар
+
     LaunchedEffect(productId.value) {
         productId.value?.let {
             getProductInfo(it) { productDetails ->
@@ -89,7 +80,7 @@ fun ChatScreen(
         }
     }
 
-    // Завантаження імені продавця
+
     LaunchedEffect(productId.value) {
         productId.value?.let {
             val db = FirebaseFirestore.getInstance()
@@ -98,17 +89,17 @@ fun ChatScreen(
                 val ownerId = productDoc.getString("ownerId")
                 if (ownerId != null) {
                     val userDoc = db.collection("users").document(ownerId).get().await()
-                    sellerName.value = userDoc.getString("name") ?: "Невідомий продавець"
+                    sellerName.value = userDoc.getString("name") ?: "Unknown"
                 } else {
-                    sellerName.value = "Невідомий продавець"
+                    sellerName.value = "Unknown"
                 }
             } catch (e: Exception) {
-                sellerName.value = "Помилка завантаження"
+                sellerName.value = "Error"
             }
         }
     }
 
-    // Завантаження повідомлень
+
     LaunchedEffect(chatId) {
         getMessages(chatId) { newMessages ->
             messages.clear()
@@ -117,27 +108,27 @@ fun ChatScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Верхній блок з кнопкою назад, назвою товару і продавцем
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF1960AB)) // Колір фону
+                .background(Color(0xFF1960AB))
                 .clickable {
-                    // Перевірка на наявність productId перед переходом
+
                     productId.value?.let {
                         navController.navigate("product_details/$it")
                     }
                 }
                 .padding(16.dp)
-                .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)) // Закруглені нижні кути
+                .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
                         .size(50.dp)
-                        .clip(RoundedCornerShape(8.dp)) // Округлення
-                        .background(Color(0xFF1960AB)) // Фон кнопки
-                        .border(2.dp, Color.White, RoundedCornerShape(8.dp)) // Білий бордер
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF1960AB))
+                        .border(2.dp, Color.White, RoundedCornerShape(8.dp))
                         .clickable { onNavigateBack() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -151,13 +142,13 @@ fun ChatScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
                     Text(
-                        text = "${productInfo.value ?: "Немає даних"}",
+                        text = "${productInfo.value ?: "No data"}",
                         color = Color.White,
                         fontSize = 25.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "${sellerName.value ?: "Немає даних"}",
+                        text = "${sellerName.value ?: "No data"}",
                         fontSize = 18.sp,
                         color = Color.White
                     )
@@ -194,7 +185,6 @@ fun ChatScreen(
             }
         }
 
-        // Поле для введення повідомлення
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -217,18 +207,18 @@ fun ChatScreen(
                 onClick = {
                     if (messageText.value.isNotEmpty()) {
                         sendMessage(chatId, userId, messageText.value)
-                        messageText.value = "" // Очищуємо поле після відправлення
+                        messageText.value = ""
                     }
                 },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF1960AB),
                     contentColor = Color.White
                 ),
-                shape = RoundedCornerShape(12.dp), // Округлення для кнопки
+                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
-                    .height(50.dp) // Висота кнопки
-                    .wrapContentWidth(), // Кнопка має фіксовану ширину, що відповідає її вмісту
-                elevation = ButtonDefaults.buttonElevation(8.dp) // Тінь для кнопки
+                    .height(50.dp)
+                    .wrapContentWidth(),
+                elevation = ButtonDefaults.buttonElevation(8.dp)
             ) {
                 Text(
                     text = "Send",
@@ -240,22 +230,18 @@ fun ChatScreen(
     }
 }
 
-
-
-// Функція для отримання даних про товар
 fun getProductInfo(productId: String, onResult: (String?) -> Unit) {
-    // Симуляція отримання інформації з бази даних
     FirebaseFirestore.getInstance().collection("products").document(productId)
         .get()
         .addOnSuccessListener { document ->
             if (document != null) {
-                onResult(document.getString("name") ?: "Невідомий товар")
+                onResult(document.getString("name") ?: "Unknown item")
             } else {
-                onResult("Немає даних")
+                onResult("No data")
             }
         }
         .addOnFailureListener {
-            onResult("Помилка завантаження даних")
+            onResult("Error")
         }
 }
 
@@ -285,17 +271,13 @@ fun MessageItem(message: Message, isCurrentUser: Boolean) {
     }
 }
 
-
-
-
-
 fun getMessages(chatId: String, onMessagesReceived: (List<Message>) -> Unit) {
     val db = FirebaseFirestore.getInstance()
 
-    db.collection("messages") // Основна колекція з повідомленнями
-        .document(chatId) // Документ з конкретним чатом
-        .collection("chatMessages") // Колекція повідомлень у чаті
-        .orderBy("timestamp", Query.Direction.ASCENDING) // Сортування за часом
+    db.collection("messages")
+        .document(chatId)
+        .collection("chatMessages")
+        .orderBy("timestamp", Query.Direction.ASCENDING)
         .addSnapshotListener { snapshot, e ->
             if (e != null) {
                 Log.e("Chat", "Error fetching messages", e)
@@ -306,21 +288,19 @@ fun getMessages(chatId: String, onMessagesReceived: (List<Message>) -> Unit) {
                 document.toObject(Message::class.java)
             } ?: emptyList()
 
-            onMessagesReceived(messages) // Відправляємо повідомлення у список
+            onMessagesReceived(messages)
         }
 }
 
 fun sendMessage(chatId: String, userId: String, messageText: String) {
     val db = FirebaseFirestore.getInstance()
 
-    // Створюємо об'єкт повідомлення
     val message = mapOf(
         "senderId" to userId,
         "message" to messageText,
         "timestamp" to System.currentTimeMillis()
     )
 
-    // Додаємо повідомлення у відповідний чат
     val messageRef = db.collection("messages")
         .document(chatId)
         .collection("chatMessages")
@@ -329,7 +309,6 @@ fun sendMessage(chatId: String, userId: String, messageText: String) {
     messageRef.set(message).addOnSuccessListener {
         Log.d("SendMessage", "Message sent successfully")
 
-        // Оновлюємо останнє повідомлення у документі чату
         val chatRef = db.collection("chats").document(chatId)
         chatRef.update(
             mapOf(
@@ -343,11 +322,9 @@ fun sendMessage(chatId: String, userId: String, messageText: String) {
         Log.e("SendMessage", "Error sending message: $e")
     }
 }
-
-
 fun Long.formatToReadableTime(): String {
     val date = Date(this)
-    val format = SimpleDateFormat("HH:mm", Locale.getDefault()) // Формат години:хвилини
+    val format = SimpleDateFormat("HH:mm", Locale.getDefault())
     return format.format(date)
 }
 

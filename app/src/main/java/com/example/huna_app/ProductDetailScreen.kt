@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -27,7 +25,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -55,7 +52,6 @@ fun ProductDetailScreen(productId: String?, navController: NavHostController) {
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     val productId = productId
 
-    // Check if the product is in favorites
     fun checkIfFavorite(userId: String, productId: String) {
         db.collection("favorites").document(userId).get()
             .addOnSuccessListener { document ->
@@ -74,14 +70,11 @@ fun ProductDetailScreen(productId: String?, navController: NavHostController) {
                 .addOnSuccessListener { document ->
                     val productData = document.toObject(Product::class.java)
                     product.value = productData
-
-                    // Check if the product is in favorites
                     checkIfFavorite(userId, it)
                 }
         }
     }
 
-    // Update favorites in Firestore
     fun updateFavorites(add: Boolean) {
         val favoritesRef = db.collection("favorites").document(userId)
 
@@ -110,15 +103,14 @@ fun ProductDetailScreen(productId: String?, navController: NavHostController) {
                 .fillMaxSize()
                 .background(Color.White)
         ) {
-            // Header with Back Button
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween // Вирівнює елементи по сторонах
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Кнопка "Назад" зі стрілкою
                 Box(
                     modifier = Modifier
                         .size(50.dp)
@@ -133,8 +125,6 @@ fun ProductDetailScreen(productId: String?, navController: NavHostController) {
                         tint = Color.White
                     )
                 }
-
-                // Кнопка "Додати в обране" з серцем
                 Box(
                     modifier = Modifier
                         .size(50.dp)
@@ -150,9 +140,6 @@ fun ProductDetailScreen(productId: String?, navController: NavHostController) {
                     )
                 }
             }
-
-
-            // Product Image
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -181,11 +168,9 @@ fun ProductDetailScreen(productId: String?, navController: NavHostController) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Product Information
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp)
             ) {
-                // Product Name
                 Text(
                     text = productDetail.name,
                     fontSize = 45.sp,
@@ -193,7 +178,6 @@ fun ProductDetailScreen(productId: String?, navController: NavHostController) {
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Price Card
                 Card(
                     shape = RoundedCornerShape(25.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF90B9F6)),
@@ -210,7 +194,6 @@ fun ProductDetailScreen(productId: String?, navController: NavHostController) {
 
                 Spacer(modifier = Modifier.height(3.dp))
 
-                // Address
                 Text(
                     text = productDetail.address,
                     fontSize = 20.sp,
@@ -220,7 +203,6 @@ fun ProductDetailScreen(productId: String?, navController: NavHostController) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Description Section
                 Card(
                     shape = RoundedCornerShape(8.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
@@ -269,7 +251,6 @@ fun ProductDetailScreen(productId: String?, navController: NavHostController) {
             }
         }
     } else {
-        // Loading Indicator
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -288,30 +269,26 @@ fun createChatIfNotExists(productId: String, onChatCreated: (String) -> Unit) {
 
     if (currentUser != null) {
         val chatsRef = db.collection("chats")
-        val productsRef = db.collection("products") // Колекція товарів
+        val productsRef = db.collection("products")
         val userId = currentUser.uid
 
-        // Отримуємо власника товару
         productsRef.document(productId).get()
             .addOnSuccessListener { productSnapshot ->
-                val ownerId = productSnapshot.getString("ownerId") // Власник товару
+                val ownerId = productSnapshot.getString("ownerId")
 
                 if (ownerId != null) {
-                    // Шукаємо існуючий чат
                     chatsRef
                         .whereEqualTo("productId", productId)
                         .whereArrayContains("participants", userId)
                         .get()
                         .addOnSuccessListener { querySnapshot ->
                             if (!querySnapshot.isEmpty) {
-                                // Якщо чат вже існує, повертаємо його ID
                                 val chatId = querySnapshot.documents[0].id
                                 onChatCreated(chatId)
                             } else {
-                                // Створюємо новий чат
                                 val newChat = hashMapOf(
                                     "productId" to productId,
-                                    "participants" to listOf(userId, ownerId), // Додаємо обох учасників
+                                    "participants" to listOf(userId, ownerId),
                                     "createdAt" to FieldValue.serverTimestamp()
                                 )
                                 chatsRef.add(newChat)
