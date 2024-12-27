@@ -74,6 +74,7 @@ fun HomeScreen(navController: NavController) {
         ) {
             composable("main") { MainScreen(db = FirebaseFirestore.getInstance(), navController = navController) }
             composable("notifications") { AllChatScreen(navController) }
+            composable("home") { HomeScreen(navController) }
             composable("add") { AddScreen(navController) }
             composable("favorites") { FavoritesScreen(navController) }
             composable("profile") { ProfileScreen(navController) }

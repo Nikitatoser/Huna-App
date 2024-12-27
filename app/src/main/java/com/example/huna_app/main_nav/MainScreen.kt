@@ -54,8 +54,8 @@ fun MainScreen(db: FirebaseFirestore, navController: NavHostController) {
     val allProductsList = remember { mutableStateListOf<Product>() }
     val filteredProductsList = remember { mutableStateListOf<Product>() }
     var searchQuery by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("Усі") }
-    val categories = listOf("Усі", "Продаю", "Шукаю")
+    var selectedCategory by remember { mutableStateOf("All") }
+    val categories = listOf("All", "I sell", "I need")
 
     LaunchedEffect(Unit) {
         db.collection("products")
